@@ -7,7 +7,7 @@ import { AuditModule } from '../audit/audit.module';
 import { AuditService } from '../audit/audit.service';
 import { GatewayModule } from '../gateway/gateway.module';
 import { GatewaySyncService } from '../gateway/gateway-sync.service';
-import { AdminTokenGuard } from '../common/admin-token.guard';
+import { ConsoleGuard, Section } from '../auth/guards';
 import { Actor } from '../common/actor.decorator';
 import { diff, findOr404 } from '../common/crud';
 import { BusinessRuleError } from '../subscriptions/subscription-rules';
@@ -114,7 +114,8 @@ export class PlansService {
 }
 
 @Controller('plans')
-@UseGuards(AdminTokenGuard)
+@Section('catalogue')
+@UseGuards(ConsoleGuard)
 export class PlansController {
   constructor(private readonly service: PlansService) {}
 

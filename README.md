@@ -54,6 +54,15 @@ deploy/             compose, configuration APISIX, royaume Keycloak, scripts
 CLAUDE.md           contexte du projet : contraintes, architecture, conventions, avancement
 ```
 
+## Sécurité (lot 2)
+
+- **Console** (routes `/partners`, `/requests`, `/disputes`…) : jeton Keycloak du client `console`. Chaque contrôleur déclare sa section de menu (`@Section`) et les rôles autorisés sont définis dans `backend/src/auth/roles.ts`. L'administrateur a tous les droits ; l'auditeur lit tout et n'écrit rien. La décision d'arbitrage est réservée à l'arbitre. `GET /console/me` renvoie le profil et les sections visibles.
+- **Portail** (`/portal/...`) : jeton du client `portail`. La banque est lue dans l'attribut `partner_code` du jeton, jamais dans la requête. La ressource d'une autre banque répond 404. Dans un litige, le rôle (émetteur ou acquéreur) est déduit de la banque connectée. Le PV de recette n'est signé que par l'administrateur sécurité de la banque.
+- **Jeton technique** (`ADMIN_API_TOKEN`) : réservé aux échanges entre services et aux scripts d'exploitation.
+- **Audit** : l'auteur est l'identité Keycloak (`amel`, `BNA:op.dupont`).
+
+Pour créer un utilisateur de banque dans Keycloak (royaume `smt`), renseignez l'attribut `partner_code` (le code de la banque, en majuscules) et attribuez-lui un rôle `banque-*`.
+
 ## Tests du back-end
 
 ```bash
@@ -71,5 +80,4 @@ QA_VALKEY_URL=redis://:<mdp>@127.0.0.1:6379 npm run test:qa
 
 - Une instance de chaque service : pas de haute disponibilité (prévue au lot de mise en production).
 - Schéma de base créé automatiquement (`DB_SYNCHRONIZE=true`) : migrations versionnées avant la production.
-- Keycloak est démarré mais pas encore branché au back-end ni au portail (lot 2).
 - OpenSearch n'est pas inclus (lot 5).

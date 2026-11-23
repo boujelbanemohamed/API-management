@@ -22,6 +22,14 @@ export interface AppConfig {
     /** Environnement servi par cette passerelle : une instance APISIX par environnement. */
     environment: 'SANDBOX' | 'PRODUCTION';
   };
+  keycloak: {
+    /** Émetteur attendu dans les jetons (adresse publique du royaume). */
+    issuerUrl: string;
+    /** Clés publiques du royaume, lues par l'adresse interne. */
+    jwksUrl: string;
+    consoleClientId: string;
+    portalClientId: string;
+  };
   valkey: {
     url: string;
     keyPrefix: string;
@@ -63,6 +71,12 @@ export function loadConfig(): AppConfig {
       adminKey: required('APISIX_ADMIN_KEY'),
       usageCallbackUrl: required('USAGE_CALLBACK_URL', 'http://backend:3000/internal/usage'),
       environment: process.env.GATEWAY_ENVIRONMENT === 'SANDBOX' ? 'SANDBOX' : 'PRODUCTION',
+    },
+    keycloak: {
+      issuerUrl: required('KEYCLOAK_ISSUER', 'http://localhost:8081/realms/smt'),
+      jwksUrl: required('KEYCLOAK_JWKS_URL', 'http://keycloak:8080/realms/smt/protocol/openid-connect/certs'),
+      consoleClientId: process.env.KEYCLOAK_CONSOLE_CLIENT ?? 'console',
+      portalClientId: process.env.KEYCLOAK_PORTAL_CLIENT ?? 'portail',
     },
     valkey: {
       url: required('VALKEY_URL', 'redis://valkey:6379'),

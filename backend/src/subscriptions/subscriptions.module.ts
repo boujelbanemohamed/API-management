@@ -9,12 +9,13 @@ import { Plan } from '../plans/plan.entity';
 import { ReasonDto } from '../partners/partners.dto';
 import { AuditModule } from '../audit/audit.module';
 import { GatewayModule } from '../gateway/gateway.module';
-import { AdminTokenGuard } from '../common/admin-token.guard';
+import { ConsoleGuard, Section } from '../auth/guards';
 import { Actor } from '../common/actor.decorator';
 import { Onboarding } from '../onboarding/onboarding.entities';
 
 @Controller('subscriptions')
-@UseGuards(AdminTokenGuard)
+@Section('banques')
+@UseGuards(ConsoleGuard)
 export class SubscriptionsController {
   constructor(private readonly service: SubscriptionsService) {}
 

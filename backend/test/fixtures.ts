@@ -18,6 +18,7 @@ export const TEST_CONFIG: AppConfig = {
     usageCallbackUrl: 'http://backend:3000/internal/usage',
     environment: 'PRODUCTION',
   },
+  keycloak: { issuerUrl: 'https://auth.test/realms/smt', jwksUrl: 'https://auth.test/certs', consoleClientId: 'console', portalClientId: 'portail' },
   valkey: { url: '', keyPrefix: 'apigw' },
   // Les tests historiques créent des abonnements de production directement.
   onboarding: { enforceForProduction: false },

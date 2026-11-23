@@ -93,7 +93,10 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD manquant}
       KC_HTTP_ENABLED: "true"
-      KC_HOSTNAME_STRICT: "false"
+      # Adresse publique fixe : c'est l'émetteur (iss) des jetons, vérifié par le back-end.
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8081}
+      # Le back-end lit les clés publiques par l'adresse interne (keycloak:8080).
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KC_HEALTH_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded
     volumes:
@@ -166,6 +169,8 @@ services:
       VALKEY_URL: redis://:${VALKEY_PASSWORD}@valkey:6379
       VALKEY_KEY_PREFIX: ${VALKEY_KEY_PREFIX:-apigw}
       ONBOARDING_ENFORCE: ${ONBOARDING_ENFORCE:-true}
+      KEYCLOAK_ISSUER: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8081}/realms/smt
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/smt/protocol/openid-connect/certs
 
 volumes:
   pgdata:

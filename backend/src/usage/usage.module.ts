@@ -18,7 +18,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsageEvent } from './usage-event.entity';
 import { ApisixLogEntry, UsageService } from './usage.service';
 import { ApiProduct } from '../apis/api-product.entity';
-import { AdminTokenGuard, safeEqual } from '../common/admin-token.guard';
+import { ConsoleGuard, Section, safeEqual } from '../auth/guards';
 import { APP_CONFIG, AppConfig } from '../config';
 import { isIsoDate } from '../common/dates';
 
@@ -51,7 +51,8 @@ export class UsageIngestController {
 }
 
 @Controller('usage')
-@UseGuards(AdminTokenGuard)
+@Section('finance')
+@UseGuards(ConsoleGuard)
 export class UsageController {
   constructor(private readonly usage: UsageService) {}
 

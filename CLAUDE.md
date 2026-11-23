@@ -32,7 +32,9 @@ Portail React → back-end NestJS (métier + BFF du portail) → APISIX → four
 - `backend/` : NestJS 11 + TypeORM, avec ces modules :
   - partners, providers, apis, plans, subscriptions ;
   - gateway (synchronisation APISIX, Valkey), usage, audit ;
-  - requests, onboarding, disputes.
+  - requests, onboarding, disputes ;
+  - auth (vérification des jetons Keycloak, gardes `ConsoleGuard` et `PortalGuard`, droits par section dans `auth/roles.ts`) ;
+  - portal (BFF du portail : la banque vient toujours du jeton, la ressource d'une autre banque répond 404).
 - Règles métier en fonctions pures : `*-rules.ts`. Calendrier tunisien : `common/working-days.ts`.
 - `gateway/apisix/plugins/` : plugins Lua.
 
@@ -59,7 +61,7 @@ https://github.com/boujelbanemohamed/API-management, branche `main`. Pousser seu
 |---|---|---|
 | 0 | Back-end métier (partners → disputes) | Fait, 51 tests verts, poussé le 2026-11-23 |
 | 1 | Socle exécutable : compose Podman, configuration APISIX, `.env`, README | Poussé. QA du 2026-11-23 sur services réels (PostgreSQL 16, Valkey, etcd, Keycloak 26, SeaweedFS, simulateur) : OK. Reste à valider sur Podman : APISIX et le parcours `deploy/scripts/qa-lot1.sh` |
-| 2 | Sécurité : Keycloak, BFF, cloisonnement par banque | À faire |
+| 2 | Sécurité : Keycloak, BFF, cloisonnement par banque | Fait et poussé le 2026-11-23 : 65 tests ; QA sur un vrai Keycloak 26 (jetons réels, deux banques) |
 | 3 | Front React : console puis portail | À faire |
-| 4 | Connecteurs : simulateurs puis SVIP, Cockpit, Chargeback (contrats d'API à fournir) | À faire |
+| 4 | Couche d'intégration : RabbitMQ, schéma outbox, un connecteur par fournisseur (SVIP, Cockpit, Chargeback ISO 8583 avec une bibliothèque Apache ou MIT, jamais jPOS qui est AGPL), simulateurs | À faire (contrats d'API à fournir) |
 | 5 | Fichiers et antivirus, notifications, contenus, facturation globale, assistant IA | À faire |

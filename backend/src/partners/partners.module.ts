@@ -6,7 +6,7 @@ import { CreatePartnerDto, ReasonDto, UpdatePartnerDto } from './partners.dto';
 import { Subscription } from '../subscriptions/subscription.entity';
 import { AuditModule } from '../audit/audit.module';
 import { GatewayModule } from '../gateway/gateway.module';
-import { AdminTokenGuard } from '../common/admin-token.guard';
+import { ConsoleGuard, Section } from '../auth/guards';
 import { Actor } from '../common/actor.decorator';
 
 /** Présentation : on ne renvoie jamais l'empreinte complète de la clé. */
@@ -16,7 +16,8 @@ function view(p: Partner) {
 }
 
 @Controller('partners')
-@UseGuards(AdminTokenGuard)
+@Section('banques')
+@UseGuards(ConsoleGuard)
 export class PartnersController {
   constructor(private readonly service: PartnersService) {}
 

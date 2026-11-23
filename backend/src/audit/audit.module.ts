@@ -2,10 +2,11 @@ import { Controller, Get, Module, Query, UseGuards } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditEvent } from './audit-event.entity';
 import { AuditService } from './audit.service';
-import { AdminTokenGuard } from '../common/admin-token.guard';
+import { ConsoleGuard, Section } from '../auth/guards';
 
 @Controller('audit')
-@UseGuards(AdminTokenGuard)
+@Section('administration')
+@UseGuards(ConsoleGuard)
 export class AuditController {
   constructor(private readonly audit: AuditService) {}
 

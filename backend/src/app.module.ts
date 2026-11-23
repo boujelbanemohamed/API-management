@@ -1,5 +1,6 @@
 import { Controller, DynamicModule, Get, Global, Inject, Module, Provider as NestProvider, Res } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { KeycloakTokenVerifier, TOKEN_VERIFIER, TokenVerifier } from './auth/token-verifier';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import Redis from 'ioredis';
 import { APP_CONFIG, AppConfig } from './config';
@@ -26,6 +27,8 @@ import { RequestsModule } from './requests/requests.module';
 import { Onboarding, OnboardingTestCase } from './onboarding/onboarding.entities';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { Dispute, DisputeEvent, DisputesModule } from './disputes/disputes.module';
+import { PortalModule } from './portal/portal.module';
+import { ConsoleMeController } from './auth/console-me.controller';
 
 export const ENTITIES = [
   Partner,
@@ -51,6 +54,8 @@ export interface AppModuleOptions {
   clock?: Clock;
   gatewayAdmin?: GatewayAdmin;
   rightsStore?: RightsStore;
+  /** Par défaut : clés publiques de Keycloak. Les tests fournissent leurs propres clés. */
+  tokenVerifier?: TokenVerifier;
 }
 
 @Controller('health')
@@ -102,6 +107,11 @@ class CoreModule {
         useFactory: () => options.gatewayAdmin ?? new ApisixAdminClient(config.apisix.adminUrl, config.apisix.adminKey),
       },
       {
+        provide: TOKEN_VERIFIER,
+        useFactory: () =>
+          options.tokenVerifier ?? new KeycloakTokenVerifier(config.keycloak.issuerUrl, config.keycloak.jwksUrl),
+      },
+      {
         provide: RIGHTS_STORE,
         useFactory: () =>
           options.rightsStore ??
@@ -145,8 +155,9 @@ export class AppModule {
         RequestsModule,
         OnboardingModule,
         DisputesModule,
+        PortalModule,
       ],
-      controllers: [HealthController],
+      controllers: [HealthController, ConsoleMeController],
     };
   }
 }

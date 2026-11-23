@@ -20,7 +20,7 @@ import { CLOCK, Clock } from '../common/clock';
 import { findOr404 } from '../common/crud';
 import { AuditModule } from '../audit/audit.module';
 import { AuditService } from '../audit/audit.service';
-import { AdminTokenGuard } from '../common/admin-token.guard';
+import { ConsoleGuard, Section } from '../auth/guards';
 import { Actor } from '../common/actor.decorator';
 import { Partner } from '../partners/partner.entity';
 
@@ -237,7 +237,8 @@ export class RequestsService {
 // ---------- Contrôleurs ----------
 
 @Controller('requests')
-@UseGuards(AdminTokenGuard)
+@Section('demandes')
+@UseGuards(ConsoleGuard)
 export class RequestsController {
   constructor(private readonly service: RequestsService) {}
 
@@ -288,7 +289,8 @@ export class RequestsController {
 }
 
 @Controller()
-@UseGuards(AdminTokenGuard)
+@Section('administration')
+@UseGuards(ConsoleGuard)
 export class CalendarController {
   constructor(private readonly service: RequestsService) {}
 

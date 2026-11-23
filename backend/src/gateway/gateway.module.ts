@@ -1,6 +1,6 @@
 import { Controller, Get, HttpCode, Module, Post, UseGuards } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AdminTokenGuard } from '../common/admin-token.guard';
+import { ConsoleGuard, Section } from '../auth/guards';
 import { Partner } from '../partners/partner.entity';
 import { Provider } from '../providers/provider.entity';
 import { ApiProduct } from '../apis/api-product.entity';
@@ -9,7 +9,8 @@ import { Subscription } from '../subscriptions/subscription.entity';
 import { GatewaySyncService } from './gateway-sync.service';
 
 @Controller('gateway')
-@UseGuards(AdminTokenGuard)
+@Section('catalogue')
+@UseGuards(ConsoleGuard)
 export class GatewayController {
   constructor(private readonly sync: GatewaySyncService) {}
 

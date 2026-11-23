@@ -18,7 +18,8 @@ import { findOr404 } from '../common/crud';
 import { Partner } from '../partners/partner.entity';
 import { AuditModule } from '../audit/audit.module';
 import { AuditService } from '../audit/audit.service';
-import { AdminTokenGuard } from '../common/admin-token.guard';
+import { ConsoleGuard, OnlyRoles, Section } from '../auth/guards';
+import { ConsoleRole } from '../auth/roles';
 import { Actor } from '../common/actor.decorator';
 
 // ---------- Entités ----------
@@ -194,7 +195,8 @@ export class DisputesService {
 // ---------- Contrôleur ----------
 
 @Controller('disputes')
-@UseGuards(AdminTokenGuard)
+@Section('litiges')
+@UseGuards(ConsoleGuard)
 export class DisputesController {
   constructor(private readonly service: DisputesService) {}
 
@@ -214,7 +216,7 @@ export class DisputesController {
     return this.service.act(id, dto, actor);
   }
 
-  @Post(':id/decision') @HttpCode(200) decide(@Param('id') id: string, @Body() dto: DecideDto, @Actor() actor: string) {
+  @Post(':id/decision') @HttpCode(200) @OnlyRoles(ConsoleRole.ARBITRE, ConsoleRole.ADMIN) decide(@Param('id') id: string, @Body() dto: DecideDto, @Actor() actor: string) {
     return this.service.decide(id, dto, actor);
   }
 }

@@ -11,7 +11,7 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { AuditModule } from '../audit/audit.module';
 import { AuditService } from '../audit/audit.service';
 import { findOr404 } from '../common/crud';
-import { AdminTokenGuard } from '../common/admin-token.guard';
+import { ConsoleGuard, Section } from '../auth/guards';
 import { Actor } from '../common/actor.decorator';
 
 // ---------- DTO ----------
@@ -184,7 +184,8 @@ export class OnboardingService {
 // ---------- Contrôleur ----------
 
 @Controller('onboardings')
-@UseGuards(AdminTokenGuard)
+@Section('mises-en-service')
+@UseGuards(ConsoleGuard)
 export class OnboardingController {
   constructor(private readonly service: OnboardingService) {}
 
@@ -242,5 +243,6 @@ export class OnboardingController {
   imports: [TypeOrmModule.forFeature([Onboarding, OnboardingTestCase]), SubscriptionsModule, AuditModule],
   providers: [OnboardingService],
   controllers: [OnboardingController],
+  exports: [OnboardingService],
 })
 export class OnboardingModule {}
