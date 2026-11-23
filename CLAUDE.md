@@ -44,7 +44,7 @@ Portail React → back-end NestJS (métier + BFF du portail) → APISIX → four
 - Règle de production : `ONBOARDING_ENFORCE` (vrai par défaut). Pas de production sans PV de recette signé par la banque et par SMT.
 
 ## Dépôt
-https://github.com/boujelbanemohamed/API-management (vide au 2026-11-23). Pousser seulement après la QA.
+https://github.com/boujelbanemohamed/API-management, branche `main`. Pousser seulement après la QA.
 
 ## Processus par lot (fixé par Mohamed)
 1. Valider la structure avec Mohamed avant de coder.
@@ -56,8 +56,8 @@ https://github.com/boujelbanemohamed/API-management (vide au 2026-11-23). Pousse
 ## Lots
 | Lot | Contenu | État |
 |---|---|---|
-| 0 | Back-end métier (partners → disputes) | Fait, 51 tests verts, pas encore poussé |
-| 1 | Socle exécutable : compose Podman, configuration APISIX, `.env`, README | Développé ; QA de bout en bout à lancer sur un poste avec Podman (`deploy/scripts/qa-lot1.sh`) |
+| 0 | Back-end métier (partners → disputes) | Fait, 51 tests verts, poussé le 2026-11-23 |
+| 1 | Socle exécutable : compose Podman, configuration APISIX, `.env`, README | Développé et poussé le 2026-11-23 à la demande de Mohamed ; QA de bout en bout à lancer sur un poste avec Podman (`deploy/scripts/qa-lot1.sh`) |
 | 2 | Sécurité : Keycloak, BFF, cloisonnement par banque | À faire |
 | 3 | Front React : console puis portail | À faire |
 | 4 | Connecteurs : simulateurs puis SVIP, Cockpit, Chargeback (contrats d'API à fournir) | À faire |
