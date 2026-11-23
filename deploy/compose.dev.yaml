@@ -1,0 +1,19 @@
+# Surcharge poste développeur : expose les services en local (127.0.0.1 uniquement).
+# podman compose --env-file .env -f deploy/compose.yaml -f deploy/compose.dev.yaml up -d
+services:
+  postgres:
+    ports: ["127.0.0.1:5432:5432"]
+  valkey:
+    ports: ["127.0.0.1:6379:6379"]
+  apisix:
+    ports: ["127.0.0.1:9180:9180", "127.0.0.1:9091:9091"]
+  keycloak:
+    ports: ["127.0.0.1:8081:8080"]
+  seaweedfs:
+    ports: ["127.0.0.1:8333:8333", "127.0.0.1:9333:9333"]
+  simulateur:
+    ports: ["127.0.0.1:8080:8080"]
+  backend:
+    ports: ["127.0.0.1:3000:3000"]
+    environment:
+      GATEWAY_SYNC_INTERVAL_SECONDS: 30

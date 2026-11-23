@@ -1,0 +1,62 @@
+# APISIX 3.x : configuration de la passerelle (mode traditionnel, configuration dans etcd).
+# Les valeurs ${{VAR}} sont lues dans l'environnement du conteneur (voir .env).
+apisix:
+  node_listen: 9080
+  enable_ipv6: false
+  # Plugin maison subscription-guard : monté dans /opt/apisix-plugins/apisix/plugins/
+  extra_lua_path: "/opt/apisix-plugins/?.lua"
+
+deployment:
+  role: traditional
+  role_traditional:
+    config_provider: etcd
+  etcd:
+    host:
+      - "http://etcd:2379"
+    prefix: /apisix
+    timeout: 30
+  admin:
+    admin_listen:
+      ip: 0.0.0.0
+      port: 9180
+    # API d'administration : réseau interne des conteneurs uniquement (jamais exposée aux banques).
+    allow_admin:
+      - 127.0.0.0/8
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+    admin_key:
+      - name: admin
+        key: ${{APISIX_ADMIN_KEY}}
+        role: admin
+
+nginx_config:
+  error_log_level: warn
+
+# Liste fermée : seuls ces plugins peuvent être utilisés.
+plugins:
+  - request-id
+  - real-ip
+  - ip-restriction
+  - key-auth
+  - openid-connect       # lot 2 (Keycloak)
+  - subscription-guard   # contrôle d'abonnement, IP, débit, quota (plugin maison)
+  - proxy-rewrite
+  - fault-injection
+  - response-rewrite
+  - http-logger          # événements d'usage vers le back-end (facturation)
+  - prometheus
+
+plugin_attr:
+  subscription-guard:
+    host: valkey
+    port: 6379
+    password: ${{VALKEY_PASSWORD}}
+    database: 0
+    prefix: ${{VALKEY_KEY_PREFIX:=apigw}}
+    timeout_ms: 200
+    utc_offset_hours: 1
+  prometheus:
+    export_addr:
+      ip: 0.0.0.0
+      port: 9091

@@ -1,0 +1,72 @@
+{
+  "realm": "smt",
+  "displayName": "Plateforme API Management — SMT",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and notUsername and passwordHistory(5)",
+  "otpPolicyType": "totp",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["fr", "en", "ar"],
+  "defaultLocale": "fr",
+  "roles": {
+    "realm": [
+      { "name": "console-admin", "description": "Console : administrateur" },
+      { "name": "console-agent-operations", "description": "Console : agent opérations monétiques" },
+      { "name": "console-agent-integration", "description": "Console : agent intégration" },
+      { "name": "console-agent-securite", "description": "Console : agent sécurité" },
+      { "name": "console-agent-support", "description": "Console : agent support" },
+      { "name": "console-agent-litiges", "description": "Console : agent litiges" },
+      { "name": "console-arbitre", "description": "Console : arbitre des litiges" },
+      { "name": "console-facturation", "description": "Console : facturation" },
+      { "name": "console-auditeur", "description": "Console : auditeur (lecture seule)" },
+      { "name": "banque-admin-securite", "description": "Portail : administrateur sécurité de la banque" },
+      { "name": "banque-operateur-monetique", "description": "Portail : opérateur monétique" },
+      { "name": "banque-gestionnaire-litiges", "description": "Portail : gestionnaire litiges" },
+      { "name": "banque-developpeur", "description": "Portail : développeur" },
+      { "name": "banque-facturation", "description": "Portail : facturation" },
+      { "name": "banque-lecture", "description": "Portail : lecture seule" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "console",
+      "name": "Console d'administration SMT",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": { "pkce.code.challenge.method": "S256" }
+    },
+    {
+      "clientId": "portail",
+      "name": "Portail des banques",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:5174/*"],
+      "webOrigins": ["http://localhost:5174"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocolMappers": [
+        {
+          "name": "banque",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "partner_code",
+            "claim.name": "partner_code",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

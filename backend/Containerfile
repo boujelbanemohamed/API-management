@@ -1,0 +1,23 @@
+# Back-end NestJS — images Red Hat UBI 9 (gratuites, redistribuables).
+# Construction : podman build -t api-platform/backend:dev -f backend/Containerfile backend
+
+FROM registry.access.redhat.com/ubi9/nodejs-22 AS build
+USER 0
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY tsconfig.json tsconfig.build.json ./
+COPY src ./src
+RUN npm run build && npm prune --omit=dev
+
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal
+WORKDIR /app
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY package.json ./
+ENV NODE_ENV=production PORT=3000
+EXPOSE 3000
+# Utilisateur non privilégié fourni par l'image UBI.
+USER 1001
+HEALTHCHECK --interval=15s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "dist/main.js"]

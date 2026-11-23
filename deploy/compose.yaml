@@ -1,0 +1,175 @@
+# Socle de la plateforme API Management — une instance de chaque service (lot 1).
+# Haute disponibilité (Patroni, etcd x3, Valkey Sentinel, APISIX x2) : lot de mise en production.
+#
+# Démarrage : voir README.md (podman compose --env-file .env -f deploy/compose.yaml up -d)
+# Noms d'images complets : Podman refuse les noms courts ambigus.
+name: api-platform
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  postgres:
+    <<: *restart
+    image: docker.io/library/postgres:16
+    environment:
+      POSTGRES_USER: apiplatform
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD manquant}
+      POSTGRES_DB: apiplatform
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD manquant}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init-databases.sh:/docker-entrypoint-initdb.d/10-init-databases.sh:ro,z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apiplatform -d apiplatform"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  valkey:
+    <<: *restart
+    image: docker.io/valkey/valkey:8.0
+    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD:?VALKEY_PASSWORD manquant}", "--appendonly", "yes"]
+    volumes:
+      - valkeydata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli -a \"$$VALKEY_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD}
+
+  etcd:
+    <<: *restart
+    image: quay.io/coreos/etcd:v3.5.17
+    command:
+      - etcd
+      - --name=etcd0
+      - --data-dir=/etcd-data
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd:2379
+    volumes:
+      - etcddata:/etcd-data
+    healthcheck:
+      test: ["CMD", "etcdctl", "--endpoints=http://127.0.0.1:2379", "endpoint", "health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  apisix:
+    <<: *restart
+    image: docker.io/apache/apisix:3.11.0-debian
+    depends_on:
+      etcd: { condition: service_healthy }
+      valkey: { condition: service_healthy }
+    environment:
+      APISIX_ADMIN_KEY: ${APISIX_ADMIN_KEY:?APISIX_ADMIN_KEY manquant}
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD}
+      VALKEY_KEY_PREFIX: ${VALKEY_KEY_PREFIX:-apigw}
+    volumes:
+      - ./apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro,z
+      - ../gateway/apisix/plugins/subscription-guard.lua:/opt/apisix-plugins/apisix/plugins/subscription-guard.lua:ro,z
+    ports:
+      # Seul port destiné aux banques (derrière le répartiteur et le pare-feu applicatif).
+      - "${GATEWAY_PORT:-9080}:9080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/9080' && bash -c '</dev/tcp/127.0.0.1/9180'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  keycloak:
+    <<: *restart
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start", "--import-realm"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD manquant}
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HEALTH_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+    volumes:
+      - ./keycloak/realm-smt.json:/opt/keycloak/data/import/realm-smt.json:ro,z
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  seaweedfs:
+    <<: *restart
+    image: docker.io/chrislusf/seaweedfs:3.80
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-master.volumeSizeLimitMB=1024"]
+    volumes:
+      - seaweeddata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+
+  clamav:
+    <<: *restart
+    image: docker.io/clamav/clamav:1.4
+    volumes:
+      - clamdb:/var/lib/clamav
+    healthcheck:
+      # La première mise à jour des signatures prend plusieurs minutes.
+      test: ["CMD-SHELL", "clamdscan --ping 1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 300s
+
+  simulateur:
+    <<: *restart
+    build: ./simulateur
+    image: localhost/api-platform/simulateur:dev
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    <<: *restart
+    build: ../backend
+    image: localhost/api-platform/backend:dev
+    depends_on:
+      postgres: { condition: service_healthy }
+      valkey: { condition: service_healthy }
+      apisix: { condition: service_healthy }
+    environment:
+      PORT: 3000
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:?ADMIN_API_TOKEN manquant}
+      USAGE_INGEST_TOKEN: ${USAGE_INGEST_TOKEN:?USAGE_INGEST_TOKEN manquant}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: apiplatform
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: apiplatform
+      # Lot 1 : schéma créé automatiquement. Migrations versionnées avant la production.
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
+      APISIX_ADMIN_URL: http://apisix:9180
+      APISIX_ADMIN_KEY: ${APISIX_ADMIN_KEY}
+      USAGE_CALLBACK_URL: http://backend:3000/internal/usage
+      GATEWAY_ENVIRONMENT: ${GATEWAY_ENVIRONMENT:-SANDBOX}
+      GATEWAY_SYNC_INTERVAL_SECONDS: ${GATEWAY_SYNC_INTERVAL_SECONDS:-300}
+      VALKEY_URL: redis://:${VALKEY_PASSWORD}@valkey:6379
+      VALKEY_KEY_PREFIX: ${VALKEY_KEY_PREFIX:-apigw}
+      ONBOARDING_ENFORCE: ${ONBOARDING_ENFORCE:-true}
+
+volumes:
+  pgdata:
+  valkeydata:
+  etcddata:
+  seaweeddata:
+  clamdb:
