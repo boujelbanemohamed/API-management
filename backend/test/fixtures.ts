@@ -1,3 +1,5 @@
+import Redis from 'ioredis';
+import { InMemoryRightsStore, RightsStore, ValkeyRightsStore } from '../src/gateway/rights-store';
 import { Partner, PartnerStatus, PartnerType } from '../src/partners/partner.entity';
 import { Provider, ProviderKind, ProviderStatus } from '../src/providers/provider.entity';
 import { ApiProduct, ApiStatus, BillingUnit, SecurityLevel } from '../src/apis/api-product.entity';
@@ -102,4 +104,22 @@ export function subscription(over: Partial<Subscription> = {}): Subscription {
     contractReference: null,
     ...over,
   });
+}
+
+/**
+ * Base et Valkey des tests de bout en bout : sql.js et mémoire par défaut,
+ * vrais PostgreSQL et Valkey quand QA_DB_URL et QA_VALKEY_URL sont définis (recette sur services réels).
+ * La base PostgreSQL est remise à zéro au démarrage de chaque suite.
+ */
+export function testDatabase(): any {
+  const url = process.env.QA_DB_URL;
+  return url
+    ? { type: 'postgres', url, synchronize: true, dropSchema: true }
+    : { type: 'sqljs', synchronize: true, autoSave: false };
+}
+
+export function testRightsStore(): RightsStore {
+  const url = process.env.QA_VALKEY_URL;
+  if (!url) return new InMemoryRightsStore();
+  return new ValkeyRightsStore(new Redis(url), `qa${process.pid}`);
 }

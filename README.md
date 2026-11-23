@@ -57,7 +57,14 @@ CLAUDE.md           contexte du projet : contraintes, architecture, conventions,
 ## Tests du back-end
 
 ```bash
-cd backend && npm ci && npm test
+cd backend && npm ci && npm test        # base sql.js et Valkey simulés
+```
+
+Recette des cas d'utilisation sur un vrai PostgreSQL et un vrai Valkey (la base indiquée est remise à zéro) :
+
+```bash
+QA_DB_URL=postgres://apiplatform:<mdp>@127.0.0.1:5432/apiplatform_qa \
+QA_VALKEY_URL=redis://:<mdp>@127.0.0.1:6379 npm run test:qa
 ```
 
 ## Limites connues du lot 1

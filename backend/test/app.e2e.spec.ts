@@ -5,16 +5,15 @@ import { AppModule } from '../src/app.module';
 import { setupApp } from '../src/setup-app';
 import { FixedClock } from '../src/common/clock';
 import { InMemoryGatewayAdmin } from '../src/gateway/gateway-admin';
-import { InMemoryRightsStore } from '../src/gateway/rights-store';
 import { SubscriptionsService } from '../src/subscriptions/subscriptions.service';
-import { TEST_CONFIG } from './fixtures';
+import { TEST_CONFIG, testDatabase, testRightsStore } from './fixtures';
 
 describe('Plateforme API — parcours complet (base en mémoire, passerelle simulée)', () => {
   let app: INestApplication;
   let http: ReturnType<typeof request>;
   const clock = new FixedClock('2026-11-23');
   const gateway = new InMemoryGatewayAdmin();
-  const rights = new InMemoryRightsStore();
+  const rights = testRightsStore();
   const ADMIN = { Authorization: `Bearer ${TEST_CONFIG.adminApiToken}`, 'x-actor': 'mohamed' };
 
   const ids: Record<string, string> = {};
@@ -27,7 +26,7 @@ describe('Plateforme API — parcours complet (base en mémoire, passerelle simu
       imports: [
         AppModule.register({
           config: TEST_CONFIG,
-          database: { type: 'sqljs', synchronize: true, autoSave: false },
+          database: testDatabase(),
           clock,
           gatewayAdmin: gateway,
           rightsStore: rights,
@@ -207,7 +206,7 @@ describe('Plateforme API — parcours complet (base en mémoire, passerelle simu
     expect(sub.body.status).toBe('TERMINATED');
     expect(gateway.consumers.has('bna')).toBe(false);
     expect(gateway.credentials.size).toBe(0);
-    expect(rights.data.size).toBe(0);
+    expect(await rights.get('sub:bna:transactions-v1')).toBeNull();
     await post(`/partners/${ids.partner}/api-key`).expect(409);
   });
 

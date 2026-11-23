@@ -45,7 +45,7 @@ mkpartner() { # code -> "id clé"
   echo "$id $key"
 }
 read -r P1 K1 <<<"$(mkpartner "QA1_$RUN")"
-read -r P2 K2 <<<"$(mkpartner "QA2_$RUN")"
+read -r _ K2 <<<"$(mkpartner "QA2_$RUN")"
 [[ -n "$K1" && -n "$K2" ]] && ok "deux banques actives avec clé d'API" || ko "banques"
 
 echo "4. Abonnement (sandbox) de la banque 1 seulement"

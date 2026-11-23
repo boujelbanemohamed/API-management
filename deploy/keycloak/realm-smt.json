@@ -12,25 +12,74 @@
   "accessTokenLifespan": 300,
   "ssoSessionIdleTimeout": 1800,
   "internationalizationEnabled": true,
-  "supportedLocales": ["fr", "en", "ar"],
+  "supportedLocales": [
+    "fr",
+    "en",
+    "ar"
+  ],
   "defaultLocale": "fr",
   "roles": {
     "realm": [
-      { "name": "console-admin", "description": "Console : administrateur" },
-      { "name": "console-agent-operations", "description": "Console : agent opérations monétiques" },
-      { "name": "console-agent-integration", "description": "Console : agent intégration" },
-      { "name": "console-agent-securite", "description": "Console : agent sécurité" },
-      { "name": "console-agent-support", "description": "Console : agent support" },
-      { "name": "console-agent-litiges", "description": "Console : agent litiges" },
-      { "name": "console-arbitre", "description": "Console : arbitre des litiges" },
-      { "name": "console-facturation", "description": "Console : facturation" },
-      { "name": "console-auditeur", "description": "Console : auditeur (lecture seule)" },
-      { "name": "banque-admin-securite", "description": "Portail : administrateur sécurité de la banque" },
-      { "name": "banque-operateur-monetique", "description": "Portail : opérateur monétique" },
-      { "name": "banque-gestionnaire-litiges", "description": "Portail : gestionnaire litiges" },
-      { "name": "banque-developpeur", "description": "Portail : développeur" },
-      { "name": "banque-facturation", "description": "Portail : facturation" },
-      { "name": "banque-lecture", "description": "Portail : lecture seule" }
+      {
+        "name": "console-admin",
+        "description": "Console : administrateur"
+      },
+      {
+        "name": "console-agent-operations",
+        "description": "Console : agent opérations monétiques"
+      },
+      {
+        "name": "console-agent-integration",
+        "description": "Console : agent intégration"
+      },
+      {
+        "name": "console-agent-securite",
+        "description": "Console : agent sécurité"
+      },
+      {
+        "name": "console-agent-support",
+        "description": "Console : agent support"
+      },
+      {
+        "name": "console-agent-litiges",
+        "description": "Console : agent litiges"
+      },
+      {
+        "name": "console-arbitre",
+        "description": "Console : arbitre des litiges"
+      },
+      {
+        "name": "console-facturation",
+        "description": "Console : facturation"
+      },
+      {
+        "name": "console-auditeur",
+        "description": "Console : auditeur (lecture seule)"
+      },
+      {
+        "name": "banque-admin-securite",
+        "description": "Portail : administrateur sécurité de la banque"
+      },
+      {
+        "name": "banque-operateur-monetique",
+        "description": "Portail : opérateur monétique"
+      },
+      {
+        "name": "banque-gestionnaire-litiges",
+        "description": "Portail : gestionnaire litiges"
+      },
+      {
+        "name": "banque-developpeur",
+        "description": "Portail : développeur"
+      },
+      {
+        "name": "banque-facturation",
+        "description": "Portail : facturation"
+      },
+      {
+        "name": "banque-lecture",
+        "description": "Portail : lecture seule"
+      }
     ]
   },
   "clients": [
@@ -40,9 +89,15 @@
       "publicClient": true,
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["http://localhost:5173/*"],
-      "webOrigins": ["http://localhost:5173"],
-      "attributes": { "pkce.code.challenge.method": "S256" }
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
     },
     {
       "clientId": "portail",
@@ -50,9 +105,15 @@
       "publicClient": true,
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["http://localhost:5174/*"],
-      "webOrigins": ["http://localhost:5174"],
-      "attributes": { "pkce.code.challenge.method": "S256" },
+      "redirectUris": [
+        "http://localhost:5174/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5174"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
       "protocolMappers": [
         {
           "name": "banque",
@@ -68,5 +129,18 @@
         }
       ]
     }
-  ]
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"unmanagedAttributePolicy\": \"ADMIN_VIEW\", \"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"email\", \"displayName\": \"${email}\", \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"partner_code\", \"displayName\": \"Code de la banque\", \"validations\": {\"pattern\": {\"pattern\": \"^[A-Z0-9_]{2,40}$\", \"error-message\": \"Code banque invalide\"}}, \"annotations\": {\"comment\": \"Cloisonnement : seule une administration peut le modifier, jamais l'utilisateur.\"}, \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}], \"groups\": []}"
+          ]
+        }
+      }
+    ]
+  }
 }

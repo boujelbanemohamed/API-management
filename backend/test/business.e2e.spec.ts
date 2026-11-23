@@ -5,8 +5,7 @@ import { AppModule } from '../src/app.module';
 import { setupApp } from '../src/setup-app';
 import { FixedClock } from '../src/common/clock';
 import { InMemoryGatewayAdmin } from '../src/gateway/gateway-admin';
-import { InMemoryRightsStore } from '../src/gateway/rights-store';
-import { TEST_CONFIG } from './fixtures';
+import { TEST_CONFIG, testDatabase, testRightsStore } from './fixtures';
 
 describe('Demandes, mises en service et litiges (règle de production appliquée)', () => {
   let app: INestApplication;
@@ -24,10 +23,10 @@ describe('Demandes, mises en service et litiges (règle de production appliquée
       imports: [
         AppModule.register({
           config: { ...TEST_CONFIG, onboarding: { enforceForProduction: true } },
-          database: { type: 'sqljs', synchronize: true, autoSave: false },
+          database: testDatabase(),
           clock,
           gatewayAdmin: new InMemoryGatewayAdmin(),
-          rightsStore: new InMemoryRightsStore(),
+          rightsStore: testRightsStore(),
         }),
       ],
     }).compile();

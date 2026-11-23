@@ -11,13 +11,14 @@ COMPOSE="${COMPOSE:-podman compose}"
 FILES=(-f deploy/compose.yaml)
 [[ "${1:-}" == "--dev" ]] && FILES+=(-f deploy/compose.dev.yaml)
 
-secret() { openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c "${1:-32}"; }
+# 32 caractères hexadécimaux, sans tube (robuste avec pipefail).
+secret() { openssl rand -hex 16; }
 
 if [[ ! -f .env ]]; then
   echo "Génération de .env…"
   cp .env.example .env
   for var in DB_PASSWORD KEYCLOAK_DB_PASSWORD KEYCLOAK_ADMIN_PASSWORD VALKEY_PASSWORD APISIX_ADMIN_KEY ADMIN_API_TOKEN USAGE_INGEST_TOKEN; do
-    sed -i "s|^${var}=.*|${var}=$(secret 32)|" .env
+    sed -i "s|^${var}=.*|${var}=$(secret)|" .env
   done
   chmod 600 .env
   echo "  .env créé (droits 600). Conservez-le en lieu sûr : il contient tous les secrets."

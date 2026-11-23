@@ -40,7 +40,8 @@ Portail React → back-end NestJS (métier + BFF du portail) → APISIX → four
 - Code et commentaires en français. Dates métier au format `AAAA-MM-JJ`, heure de Tunis, avec une horloge injectable (`FixedClock` dans les tests).
 - Erreurs métier : `BusinessRuleError(code, message)` → HTTP 409 `{ statusCode, code, message }`.
 - Chaque action est tracée dans l'audit, avec son auteur.
-- Tests : Jest. Les tests de bout en bout tournent sur sql.js en mémoire, avec une passerelle et Valkey simulés. Lancer `npm test` dans `backend/`.
+- Tests : Jest. Les tests de bout en bout tournent sur sql.js en mémoire, avec une passerelle et Valkey simulés. Lancer `npm test` dans `backend/`. Recette sur un vrai PostgreSQL et un vrai Valkey : `npm run test:qa` avec `QA_DB_URL` et `QA_VALKEY_URL`.
+- Keycloak : l'attribut utilisateur `partner_code` (cloisonnement) est déclaré dans le profil utilisateur du royaume ; seul un administrateur peut le modifier.
 - Règle de production : `ONBOARDING_ENFORCE` (vrai par défaut). Pas de production sans PV de recette signé par la banque et par SMT.
 
 ## Dépôt
@@ -57,7 +58,7 @@ https://github.com/boujelbanemohamed/API-management, branche `main`. Pousser seu
 | Lot | Contenu | État |
 |---|---|---|
 | 0 | Back-end métier (partners → disputes) | Fait, 51 tests verts, poussé le 2026-11-23 |
-| 1 | Socle exécutable : compose Podman, configuration APISIX, `.env`, README | Développé et poussé le 2026-11-23 à la demande de Mohamed ; QA de bout en bout à lancer sur un poste avec Podman (`deploy/scripts/qa-lot1.sh`) |
+| 1 | Socle exécutable : compose Podman, configuration APISIX, `.env`, README | Poussé. QA du 2026-11-23 sur services réels (PostgreSQL 16, Valkey, etcd, Keycloak 26, SeaweedFS, simulateur) : OK. Reste à valider sur Podman : APISIX et le parcours `deploy/scripts/qa-lot1.sh` |
 | 2 | Sécurité : Keycloak, BFF, cloisonnement par banque | À faire |
 | 3 | Front React : console puis portail | À faire |
 | 4 | Connecteurs : simulateurs puis SVIP, Cockpit, Chargeback (contrats d'API à fournir) | À faire |
