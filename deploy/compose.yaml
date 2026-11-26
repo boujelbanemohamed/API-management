@@ -185,6 +185,11 @@ services:
       VALKEY_KEY_PREFIX: ${VALKEY_KEY_PREFIX:-apigw}
       ONBOARDING_ENFORCE: ${ONBOARDING_ENFORCE:-true}
       AMQP_URL: amqp://apim:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      # Services opérationnels : routes APISIX en production, simulateurs en sandbox (vides = simulateurs).
+      OPS_SVIP_URL: ${OPS_SVIP_URL:-http://sim-svip:8092}
+      OPS_P1_URL: ${OPS_P1_URL:-http://sim-p1:8093}
+      OPS_COCKPIT_URL: ${OPS_COCKPIT_URL:-http://sim-cockpit-lecture:8094}
+      OPS_API_KEY: ${OPS_API_KEY:-}
       KEYCLOAK_ISSUER: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8081}/realms/smt
       KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/smt/protocol/openid-connect/certs
 
@@ -242,6 +247,28 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
+
+  # Simulateurs en lecture (lot 4b) : interfaces supposées, à aligner sur les contrats réels.
+  sim-svip:
+    <<: *restart
+    image: localhost/api-platform/connectors:dev
+    command: ["node", "dist/sim/read-sim.js"]
+    depends_on: [connector-chargeback]
+    environment: { ROLE: svip, PORT: 8092 }
+
+  sim-p1:
+    <<: *restart
+    image: localhost/api-platform/connectors:dev
+    command: ["node", "dist/sim/read-sim.js"]
+    depends_on: [connector-chargeback]
+    environment: { ROLE: p1, PORT: 8093 }
+
+  sim-cockpit-lecture:
+    <<: *restart
+    image: localhost/api-platform/connectors:dev
+    command: ["node", "dist/sim/read-sim.js"]
+    depends_on: [connector-chargeback]
+    environment: { ROLE: cockpit, PORT: 8094 }
 
   portail:
     <<: *restart

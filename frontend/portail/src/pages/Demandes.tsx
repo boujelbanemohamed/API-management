@@ -71,7 +71,7 @@ export function DemandeNouvelle() {
   const qc = useQueryClient();
   const { register, handleSubmit, formState, watch } = useForm<Form>({
     resolver: zodResolver(schema),
-    defaultValues: { type: (params.get('type') as Form['type']) ?? 'OPERATION', service: 'CARTE', subject: '', reference: '' },
+    defaultValues: { type: (params.get('type') as Form['type']) ?? 'OPERATION', service: params.get('service') ?? 'CARTE', subject: params.get('subject') ?? '', reference: params.get('reference') ?? '' },
   });
   const isOperation = watch('type') === 'OPERATION';
   const create = useMutation({

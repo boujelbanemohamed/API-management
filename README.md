@@ -68,6 +68,10 @@ CLAUDE.md           contexte du projet : contraintes, architecture, conventions,
 - **Simulateurs** (sandbox) : `sim-chargeback` accuse réception (code 000) ; il refuse un montant nul (110), le code motif 9999 (909) et une carte non masquée (902). `sim-cockpit` exécute l'ordre, le refuse si l'objet contient « REFUS », ou demande une information si l'objet contient « INFO ».
 - En production, renseignez `CHARGEBACK_HOST` et `COCKPIT_URL` dans `.env`. Vides, ces variables pointent vers les simulateurs.
 
+- **Services opérationnels (lot 4b)** : le portail affiche, en lecture, les transactions (Plateforme 1), les cartes et les comptes SmartVista (SVIP), ainsi que les GAB, les commerçants, les TPE et les affiliations (SMT Cockpit). Le back-end appelle chaque fournisseur au nom de la banque (`X-Partner-Code`). Il ne garde que les données de cette banque et masque tout numéro de carte complet qui lui parviendrait. Si un fournisseur est indisponible, l'écran l'indique (503 `PROVIDER_UNAVAILABLE`) et propose de créer une demande. Les actions (opposition, plafond, intervention GAB ou TPE, affiliation, accès SmartVista) ouvrent une demande préremplie. Une transaction peut être contestée en un clic : le litige est prérempli. Les adresses se règlent dans `OPS_SVIP_URL`, `OPS_P1_URL` et `OPS_COCKPIT_URL`. En production, ce sont les routes APISIX ; vides, elles pointent vers les simulateurs `sim-svip`, `sim-p1` et `sim-cockpit-lecture`.
+
+**Tout format d'échange fournisseur est isolé dans un adaptateur réglable** : ISO 8583 dans `connectors/src/iso8583.ts` et `chargeback/mapping.ts`, Cockpit dans `connectors/src/cockpit/`, lecture dans `backend/src/operations/`. Les contrats réels s'y brancheront sans toucher au métier.
+
 ```bash
 cd connectors && npm ci && npm test     # codec ISO 8583, signature des webhooks, traduction des litiges
 ```

@@ -7,8 +7,9 @@ import { LitigesListe, LitigeNouveau, LitigeDetail } from './pages/Litiges';
 import { MisesEnServiceListe, MiseEnServiceDetail } from './pages/MisesEnService';
 import { Catalogue } from './pages/Catalogue';
 import { Consommation } from './pages/Consommation';
+import { AccesSmartVista, Affiliation, Commercants, Gab, ServicesCartes, Transactions } from './pages/Operations';
 
-const LOT4 = 'Disponible avec la couche d’intégration (lot 4)';
+const LOT4 = 'Disponible au lot 5';
 const LOT5 = 'Disponible au lot 5';
 
 /** Menu du portail (structure validée sur les maquettes), filtré selon les sections autorisées. */
@@ -18,7 +19,14 @@ function menu(sections: string[]): NavGroup[] {
     { items: [{ label: 'Accueil', to: '/' }] },
     has('operations') && {
       label: 'Opérations',
-      items: ['Transactions', 'Services cartes', 'GAB', 'Commerçants et TPE', 'Affiliation e-commerce', 'Accès SmartVista'].map((label) => ({ label, soon: LOT4 })),
+      items: [
+        { label: 'Transactions', to: '/operations/transactions' },
+        { label: 'Services cartes', to: '/operations/cartes' },
+        { label: 'GAB', to: '/operations/gab' },
+        { label: 'Commerçants et TPE', to: '/operations/commercants' },
+        { label: 'Affiliation e-commerce', to: '/operations/affiliation' },
+        { label: 'Accès SmartVista', to: '/operations/smartvista' },
+      ],
     },
     (has('demandes') || has('litiges')) && {
       label: 'Demandes et litiges',
@@ -52,6 +60,16 @@ export function App() {
     <Routes>
       <Route element={<AppShell brand="Portail SMT" menuLabel="Menu du portail" groups={menu(me.sections)} context={<span className="pill pill-accent">{me.partner.name}</span>} />}>
         <Route index element={<Accueil />} />
+        {has('operations') && (
+          <>
+            <Route path="operations/transactions" element={<Transactions />} />
+            <Route path="operations/cartes" element={<ServicesCartes />} />
+            <Route path="operations/gab" element={<Gab />} />
+            <Route path="operations/commercants" element={<Commercants />} />
+            <Route path="operations/affiliation" element={<Affiliation />} />
+            <Route path="operations/smartvista" element={<AccesSmartVista />} />
+          </>
+        )}
         {has('demandes') && (
           <>
             <Route path="demandes" element={<DemandesListe />} />

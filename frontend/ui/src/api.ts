@@ -44,7 +44,9 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     const body = (data ?? {}) as { code?: string; message?: string | string[] };
     const detail = Array.isArray(body.message) ? body.message.join(' ; ') : body.message;
     // Erreur métier (409) ou de saisie (400) : le message du back-end est fait pour l'utilisateur.
-    const message = res.status === 409 || res.status === 400 ? (detail ?? 'Requête refusée.') : (MESSAGES[res.status] ?? 'Le service est momentanément indisponible.');
+    // Fournisseur indisponible (503) : le back-end nomme le fournisseur et propose une demande.
+    const fromBackend = res.status === 409 || res.status === 400 || (res.status === 503 && body.code === 'PROVIDER_UNAVAILABLE');
+    const message = fromBackend ? (detail ?? 'Requête refusée.') : (MESSAGES[res.status] ?? 'Le service est momentanément indisponible.');
     throw new ApiError(res.status, body.code, message);
   }
   return data as T;

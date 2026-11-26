@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -80,7 +80,19 @@ type OpenForm = z.infer<typeof openSchema>;
 export function LitigeNouveau() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { register, handleSubmit, formState } = useForm<OpenForm>({ resolver: zodResolver(openSchema) });
+  // Préremplissage depuis l'écran Transactions (F-LIT-01).
+  const [params] = useSearchParams();
+  const { register, handleSubmit, formState } = useForm<OpenForm>({
+    resolver: zodResolver(openSchema),
+    defaultValues: {
+      transactionRef: params.get('reference') ?? '',
+      maskedPan: params.get('pan') ?? '',
+      transactionDate: params.get('date') ?? '',
+      amount: params.get('amount') ?? '',
+      acquirerCode: params.get('acquirer') ?? '',
+      reasonCode: '',
+    },
+  });
   const open = useMutation({
     mutationFn: (f: OpenForm) =>
       post<Dispute>('/portal/disputes', {

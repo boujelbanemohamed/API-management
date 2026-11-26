@@ -22,8 +22,7 @@ test('opérateur : menu selon ses droits, demande avec carte masquée obligatoir
   await expect(page.getByText('Banque BNA').or(page.getByText('BNA')).first()).toBeVisible();
   await expect(menu(page).getByRole('link', { name: 'Mes demandes' })).toBeVisible();
   await expect(menu(page).getByRole('link', { name: 'Litiges' })).toHaveCount(0);
-  await expect(menu(page).getByText('Transactions')).toBeVisible(); // prévu au lot 4, non cliquable
-  await expect(menu(page).getByRole('link', { name: 'Transactions' })).toHaveCount(0);
+  await expect(menu(page).getByRole('link', { name: 'Transactions' })).toBeVisible(); // lot 4b : écran actif
 
   await menu(page).getByRole('link', { name: 'Mes demandes' }).click();
   await page.getByRole('link', { name: 'Nouvelle demande' }).click();
@@ -51,6 +50,69 @@ test('opérateur : une demande GAB part au Cockpit et revient traitée', async (
     await expect(page.getByText('Traitée', { exact: true })).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 20_000 });
   await expect(page.getByText('Opération exécutée')).toBeVisible();
+});
+
+test('opérations : transactions de la seule banque, source affichée, jamais de numéro complet', async ({ page }) => {
+  await login(page, USERS.op.username, '/operations/transactions');
+  await expect(page.getByText('Source : Plateforme 1')).toBeVisible();
+  await page.getByLabel('Canal').selectOption('GAB');
+  await page.getByRole('button', { name: 'Rechercher' }).click();
+  const rows = page.getByRole('table', { name: 'Transactions' }).locator('tbody tr');
+  await expect(rows.first()).toBeVisible();
+  for (const cell of await rows.locator('td:nth-child(5)').allTextContents()) expect(cell).toBe('GAB');
+  for (const ref of await rows.locator('td:nth-child(2)').allTextContents()) expect(ref.startsWith('BNA')).toBe(true);
+  expect(await page.locator('main').innerText()).not.toMatch(/\d{13,19}/);
+  // L'opérateur n'a pas la section Litiges : pas de lien « Contester ».
+  await expect(page.getByRole('link', { name: 'Contester' })).toHaveCount(0);
+});
+
+test('opérations : opposition demandée depuis Services cartes, préremplie', async ({ page }) => {
+  await login(page, USERS.op.username, '/operations/cartes');
+  await expect(page.getByText('Source : SVIP (SmartVista)')).toBeVisible();
+  await page.getByLabel('État').selectOption('ACTIVE');
+  await page.getByRole('button', { name: 'Rechercher' }).click();
+  const first = page.getByRole('table', { name: 'Cartes' }).locator('tbody tr').first();
+  const pan = (await first.locator('td').first().innerText()).trim();
+  await first.getByRole('link', { name: 'Opposition' }).click();
+  await expect(page.getByLabel('Objet')).toHaveValue(`Opposition de la carte ${pan}`);
+  await expect(page.getByLabel('Référence (facultatif)')).toHaveValue(pan);
+  await expect(page.getByLabel('Service concerné')).toHaveValue('CARTE');
+  await page.getByRole('button', { name: 'Envoyer la demande' }).click();
+  await expect(page.getByRole('heading', { name: `Opposition de la carte ${pan}` })).toBeVisible();
+  await expect(page.getByText('Nouvelle')).toBeVisible(); // carte : traitée par les agents SMT
+});
+
+test('opérations : intervention GAB transmise au Cockpit depuis l’écran GAB', async ({ page }) => {
+  await login(page, USERS.op.username, '/operations/gab');
+  await expect(page.getByText('Source : SMT Cockpit')).toBeVisible();
+  await page.getByRole('link', { name: 'Intervention' }).first().click();
+  await expect(page.getByLabel('Service concerné')).toHaveValue('GAB');
+  await page.getByRole('button', { name: 'Envoyer la demande' }).click();
+  await expect(async () => {
+    await page.reload();
+    await expect(page.getByText('Traitée', { exact: true })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 20_000 });
+});
+
+test('opérations : administrateur sécurité conteste une transaction, litige prérempli', async ({ page }) => {
+  await login(page, USERS.rssi.username, '/operations/transactions');
+  const row = page.getByRole('table', { name: 'Transactions' }).locator('tbody tr').filter({ has: page.getByRole('link', { name: 'Contester' }) }).first();
+  const ref = (await row.locator('td:nth-child(2)').innerText()).trim();
+  await row.getByRole('link', { name: 'Contester' }).click();
+  await expect(page.getByLabel('Référence de la transaction')).toHaveValue(ref);
+  await expect(page.getByLabel('Numéro de carte masqué')).toHaveValue(/^\d{6}\*{6}\d{4}$/);
+  await expect(page.getByLabel('Code de la banque acquéreuse')).not.toHaveValue('');
+});
+
+test('opérations : les autres écrans répondent avec leur source', async ({ page }) => {
+  await login(page, USERS.op.username, '/operations/commercants');
+  await expect(page.getByText('Source : SMT Cockpit')).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Commerçants' })).toBeVisible();
+  await menu(page).getByRole('link', { name: 'Affiliation e-commerce' }).click();
+  await expect(page.getByRole('table', { name: 'Dossiers d’affiliation' })).toBeVisible();
+  await menu(page).getByRole('link', { name: 'Accès SmartVista' }).click();
+  await expect(page.getByText('Source : SVIP (SmartVista)')).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Comptes SmartVista' })).toContainText('bna.');
 });
 
 test('cloisonnement : une autre banque ne voit pas la demande', async ({ page }) => {

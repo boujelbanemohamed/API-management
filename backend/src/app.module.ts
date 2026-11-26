@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { InMemoryBus, MESSAGE_BUS, MessageBus, RabbitBus } from './integration/message-bus';
 import { InboxMessage, OutboxMessage } from './integration/outbox';
 import { IntegrationModule } from './integration/integration.module';
+import { OperationsClient, OperationsModule, operationsClientProvider } from './operations/operations.module';
 import { KeycloakTokenVerifier, TOKEN_VERIFIER, TokenVerifier } from './auth/token-verifier';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import Redis from 'ioredis';
@@ -63,6 +64,8 @@ export interface AppModuleOptions {
   tokenVerifier?: TokenVerifier;
   /** Par défaut : RabbitMQ (AMQP_URL), sinon bus en mémoire. */
   messageBus?: MessageBus;
+  /** Par défaut : HTTP vers les adresses OPS_*_URL. */
+  operationsClient?: OperationsClient;
 }
 
 @Controller('health')
@@ -125,6 +128,7 @@ class CoreModule {
           return new RabbitBus(url);
         },
       },
+      operationsClientProvider(config, options.operationsClient),
       {
         provide: TOKEN_VERIFIER,
         useFactory: () =>
@@ -176,6 +180,7 @@ export class AppModule {
         DisputesModule,
         IntegrationModule,
         PortalModule,
+        OperationsModule,
       ],
       controllers: [HealthController, ConsoleMeController],
     };

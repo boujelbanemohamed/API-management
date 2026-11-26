@@ -11,7 +11,9 @@ export class ErrorsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse();
     const { status, body } = this.map(exception);
-    if (status >= 500) this.logger.error(exception instanceof Error ? exception.stack : String(exception));
+    // Fournisseur indisponible : attendu, journalisé sans pile d'appel.
+    if (status === 503) this.logger.warn(`${body.code} : ${body.message}`);
+    else if (status >= 500) this.logger.error(exception instanceof Error ? exception.stack : String(exception));
     response.status(status).json({ statusCode: status, ...body });
   }
 
@@ -25,7 +27,8 @@ export class ErrorsFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const res = exception.getResponse();
       const message = typeof res === 'string' ? res : ((res as any).message ?? exception.message);
-      return { status: exception.getStatus(), body: { code: httpCode(exception.getStatus()), message } };
+      const code = typeof res === 'object' && typeof (res as any).code === 'string' ? (res as any).code : httpCode(exception.getStatus());
+      return { status: exception.getStatus(), body: { code, message } };
     }
     if (exception instanceof QueryFailedError && /unique|duplicate/i.test(exception.message)) {
       return { status: 409, body: { code: 'DUPLICATE', message: 'Cet élément existe déjà (valeur unique en double).' } };

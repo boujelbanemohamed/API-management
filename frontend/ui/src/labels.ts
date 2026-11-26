@@ -98,6 +98,7 @@ export const OPERATION_SERVICE: Record<string, string> = {
   GAB: 'GAB',
   TPE: 'TPE',
   AFFILIATION: 'Affiliation e-commerce',
+  SMARTVISTA: 'Accès SmartVista',
 };
 
 export const ENVIRONMENT: Record<string, string> = { SANDBOX: 'Sandbox', PRODUCTION: 'Production' };

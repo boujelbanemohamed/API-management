@@ -27,6 +27,13 @@ export interface AppConfig {
     amqpUrl: string;
     relayIntervalMs: number;
   };
+  /** Services opérationnels : adresse de chaque fournisseur (route APISIX en production, simulateur en sandbox). */
+  operations?: {
+    urls: { svip: string; p1: string; cockpit: string };
+    /** Clé de consommateur APISIX du back-end, si les routes l'exigent. */
+    apiKey: string;
+    timeoutMs: number;
+  };
   keycloak: {
     /** Émetteur attendu dans les jetons (adresse publique du royaume). */
     issuerUrl: string;
@@ -80,6 +87,11 @@ export function loadConfig(): AppConfig {
     integration: {
       amqpUrl: process.env.AMQP_URL ?? '',
       relayIntervalMs: Number(process.env.OUTBOX_RELAY_MS ?? 1000),
+    },
+    operations: {
+      urls: { svip: process.env.OPS_SVIP_URL ?? '', p1: process.env.OPS_P1_URL ?? '', cockpit: process.env.OPS_COCKPIT_URL ?? '' },
+      apiKey: process.env.OPS_API_KEY ?? '',
+      timeoutMs: Number(process.env.OPS_TIMEOUT_MS ?? 5000),
     },
     keycloak: {
       issuerUrl: required('KEYCLOAK_ISSUER', 'http://localhost:8081/realms/smt'),
