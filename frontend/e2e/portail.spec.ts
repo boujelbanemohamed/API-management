@@ -88,6 +88,7 @@ test('opérations : intervention GAB transmise au Cockpit depuis l’écran GAB'
   await page.getByRole('link', { name: 'Intervention' }).first().click();
   await expect(page.getByLabel('Service concerné')).toHaveValue('GAB');
   await page.getByRole('button', { name: 'Envoyer la demande' }).click();
+  await expect(page.getByRole('heading', { name: /^Intervention sur le GAB/ })).toBeVisible();
   await expect(async () => {
     await page.reload();
     await expect(page.getByText('Traitée', { exact: true })).toBeVisible({ timeout: 1000 });
@@ -155,8 +156,10 @@ test('litige : la STB (acquéreur) voit que c’est à elle d’agir et représe
   await expect(page.getByRole('row', { name: new RegExp(`TX-${seed().run}`) })).toContainText('à vous');
   await page.goto(new URL(disputeUrl).pathname);
   await expect(page.getByText('Vous êtes acquéreur')).toBeVisible();
+  await page.getByLabel('Ajouter une pièce').setInputFiles({ name: 'ticket-signe.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 ticket') });
+  await expect(page.getByRole('button', { name: 'ticket-signe.pdf' })).toBeVisible();
   await page.getByLabel('Action', { exact: true }).selectOption({ label: 'Second présentement' });
-  await page.getByLabel('Référence du justificatif').fill('ticket-signe.pdf');
+  await page.getByLabel('Justificatif').selectOption({ label: 'ticket-signe.pdf' });
   await page.getByRole('button', { name: 'Valider l’action' }).click();
   await expect(page.getByText('1240/205')).toBeVisible();
 });

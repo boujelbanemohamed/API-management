@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api, Card, ErrorBanner, Field, formatDate, Loading, PageHeader, Pill, Steps, Table, CASE_STATUS, ONBOARDING_STEP, STEP_ORDER, TEST_MODE } from '@smt/ui';
+import { api, Attachments, Card, ErrorBanner, Field, formatDate, Loading, PageHeader, Pill, Steps, Table, CASE_STATUS, ONBOARDING_STEP, STEP_ORDER, TEST_MODE } from '@smt/ui';
 import { useCan, useMe } from '../session';
 import { ApiRow, PartnerRow, useAction, useList } from '../common';
 
@@ -74,6 +74,9 @@ export function MiseEnServiceConsoleDetail() {
             {o.step === 'TESTS' && o.testMode !== 'AUTONOMOUS' && <button className="btn btn-secondary" onClick={() => go('/joint-sessions')}>Enregistrer une session conjointe</button>}
           </div>
         )}
+      </Card>
+      <Card title="Documents (contrat, PV, preuves)">
+        <Attachments ownerType="ONBOARDING" ownerId={o.id} apiBase="/files" canUpload={can} />
       </Card>
       <Card title="Cahier de tests">
         <Table caption="Cas de test" rows={o.testCases ?? []} rowKey={(c) => c.id} empty="Aucun cas."

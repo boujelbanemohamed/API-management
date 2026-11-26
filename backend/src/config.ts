@@ -34,6 +34,8 @@ export interface AppConfig {
     apiKey: string;
     timeoutMs: number;
   };
+  /** Fichiers : filer SeaweedFS et antivirus ClamAV (clamd). */
+  files?: { filerUrl: string; clamavHost: string; clamavPort: number };
   keycloak: {
     /** Émetteur attendu dans les jetons (adresse publique du royaume). */
     issuerUrl: string;
@@ -41,6 +43,10 @@ export interface AppConfig {
     jwksUrl: string;
     consoleClientId: string;
     portalClientId: string;
+    /** API d'administration (gestion des accès) : adresse interne et compte de service. */
+    adminUrl?: string;
+    adminClientId?: string;
+    adminClientSecret?: string;
   };
   valkey: {
     url: string;
@@ -93,11 +99,19 @@ export function loadConfig(): AppConfig {
       apiKey: process.env.OPS_API_KEY ?? '',
       timeoutMs: Number(process.env.OPS_TIMEOUT_MS ?? 5000),
     },
+    files: {
+      filerUrl: process.env.SEAWEED_FILER_URL ?? 'http://seaweedfs:8888',
+      clamavHost: process.env.CLAMAV_HOST ?? 'clamav',
+      clamavPort: Number(process.env.CLAMAV_PORT ?? 3310),
+    },
     keycloak: {
       issuerUrl: required('KEYCLOAK_ISSUER', 'http://localhost:8081/realms/smt'),
       jwksUrl: required('KEYCLOAK_JWKS_URL', 'http://keycloak:8080/realms/smt/protocol/openid-connect/certs'),
       consoleClientId: process.env.KEYCLOAK_CONSOLE_CLIENT ?? 'console',
       portalClientId: process.env.KEYCLOAK_PORTAL_CLIENT ?? 'portail',
+      adminUrl: process.env.KEYCLOAK_ADMIN_URL ?? 'http://keycloak:8080',
+      adminClientId: process.env.KEYCLOAK_BACKEND_CLIENT ?? 'backend-admin',
+      adminClientSecret: process.env.KEYCLOAK_BACKEND_SECRET ?? '',
     },
     valkey: {
       url: required('VALKEY_URL', 'redis://valkey:6379'),

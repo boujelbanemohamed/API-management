@@ -13,6 +13,7 @@ export default defineConfig({
   projects: [
     { name: 'portail', testMatch: 'portail.spec.ts', use: { baseURL: 'http://localhost:5174' } },
     { name: 'console', testMatch: 'console.spec.ts', use: { baseURL: 'http://localhost:5173' } },
+    { name: 'lot5', testMatch: 'lot5.spec.ts', use: { baseURL: 'http://localhost:5174' }, dependencies: ['portail', 'console'] },
   ],
   use: {
     locale: 'fr-FR',

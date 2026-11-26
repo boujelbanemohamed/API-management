@@ -22,6 +22,7 @@ export const USERS = {
   arbitre: { username: 'e2e.arbitre', bank: '', role: 'console-arbitre' },
   integ: { username: 'e2e.integ', bank: '', role: 'console-agent-integration' },
   audit: { username: 'e2e.audit', bank: '', role: 'console-auditeur' },
+  admin: { username: 'e2e.admin', bank: '', role: 'console-admin' },
 };
 
 async function call<T>(url: string, init: RequestInit & { ok?: number[] } = {}): Promise<T> {
@@ -106,6 +107,15 @@ export default async function seed() {
   await back(`/onboardings/${o2.id}/advance`, {});
   await back(`/onboardings/${o2.id}/sign`, { party: 'BANK' });
 
+  // Contenus publiés : communiqué important, enquête, document de bibliothèque.
+  const com = await back<{ id: string }>('/contents', { kind: 'COMMUNIQUE', title: `Maintenance programmée ${run}`, body: 'Interruption samedi de 2 h à 4 h.', important: true });
+  await back(`/contents/${com.id}/publish`, {});
+  const survey = await back<{ id: string }>('/contents', { kind: 'ENQUETE', title: `Satisfaction ${run}`, questions: [{ id: 'note', label: 'Votre note', type: 'choice', options: ['1', '2', '3', '4', '5'] }, { id: 'avis', label: 'Votre avis', type: 'text' }] });
+  await back(`/contents/${survey.id}/publish`, {});
+  const doc = await back<{ id: string }>('/contents', { kind: 'DOCUMENT', title: `Guide des litiges ${run}`, category: 'Procédures' });
+  await back(`/contents/${doc.id}/file`, { name: 'guide-litiges.pdf', mime: 'application/pdf', content: Buffer.from('%PDF-1.4 guide').toString('base64') });
+  await back(`/contents/${doc.id}/publish`, {});
+
   await keycloakUsers();
-  writeFileSync(new URL('./.seed.json', import.meta.url), JSON.stringify({ run, apiName: `Services cartes ${run}`, freeApiName: `Affiliation ${run}`, acceptanceId: o.id, password: PASSWORD, requestSubject: `Relever le plafond ${run}`, arbitrationId: d.id, smtSignId: o2.id, gabName: `GAB ${run}`, requestId: req.id }));
+  writeFileSync(new URL('./.seed.json', import.meta.url), JSON.stringify({ run, apiName: `Services cartes ${run}`, freeApiName: `Affiliation ${run}`, acceptanceId: o.id, password: PASSWORD, requestSubject: `Relever le plafond ${run}`, arbitrationId: d.id, smtSignId: o2.id, gabName: `GAB ${run}`, requestId: req.id, communique: `Maintenance programmée ${run}`, survey: `Satisfaction ${run}`, doc: `Guide des litiges ${run}` }));
 }

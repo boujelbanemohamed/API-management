@@ -60,5 +60,28 @@ function safeJson(text: string): unknown {
   }
 }
 
+/** Téléchargement authentifié : le navigateur reçoit le fichier sans exposer le jeton dans une URL. */
+export async function download(path: string, filename: string): Promise<void> {
+  const token = await tokenProvider();
+  const res = await fetch(baseUrl + path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new ApiError(res.status, undefined, MESSAGES[res.status] ?? 'Téléchargement impossible.');
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Lit un fichier choisi par l'utilisateur et l'encode en base64 pour l'envoi. */
+export function readAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
+    r.onerror = () => reject(new Error('Lecture du fichier impossible.'));
+    r.readAsDataURL(file);
+  });
+}
+
 export const post = <T>(path: string, body: unknown = {}) => api<T>(path, { method: 'POST', body });
 export const patch = <T>(path: string, body: unknown) => api<T>(path, { method: 'PATCH', body });

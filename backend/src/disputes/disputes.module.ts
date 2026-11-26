@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Inject, Injectable, Module, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
-import { Column, CreateDateColumn, Entity, FindOptionsWhere, Index, PrimaryGeneratedColumn, Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
+import { Dispute, DisputeEvent } from './dispute.entities';
 import { IsBoolean, IsIn, IsNumber, IsOptional, IsPositive, IsString, IsUUID, Matches, MaxLength, Min } from 'class-validator';
 import {
   ActionInput,
@@ -16,6 +17,8 @@ import { BusinessRuleError } from '../subscriptions/subscription-rules';
 import { enqueue } from '../integration/outbox';
 import { TOPICS } from '../integration/message-bus';
 import { Inbox } from '../integration/integration.module';
+import { FilesModule, FilesService } from '../files/files.module';
+import { NotificationsService } from '../notifications/notifications.module';
 import { CLOCK, Clock } from '../common/clock';
 import { findOr404 } from '../common/crud';
 import { Partner } from '../partners/partner.entity';
@@ -25,54 +28,7 @@ import { ConsoleGuard, OnlyRoles, Section } from '../auth/guards';
 import { ConsoleRole } from '../auth/roles';
 import { Actor } from '../common/actor.decorator';
 
-// ---------- Entités ----------
-
-@Entity('disputes')
-@Index(['issuerId', 'stage'])
-@Index(['acquirerId', 'stage'])
-export class Dispute {
-  @PrimaryGeneratedColumn('uuid') id: string;
-  /** Banque émettrice (porteur). */
-  @Column({ type: 'varchar', length: 36 }) issuerId: string;
-  /** Banque acquéreuse (commerçant). */
-  @Column({ type: 'varchar', length: 36 }) acquirerId: string;
-  @Column({ type: 'varchar', length: 40 }) transactionRef: string;
-  /** Jamais de numéro complet : 6 premiers et 4 derniers chiffres. */
-  @Column({ type: 'varchar', length: 19 }) maskedPan: string;
-  @Column({ type: 'varchar', length: 10 }) transactionDate: string;
-  /** Montant en millimes. */
-  @Column({ type: 'int' }) transactionAmount: number;
-  @Column({ type: 'varchar', length: 3, default: '788' }) currency: string;
-  @Column({ type: 'varchar', length: 10 }) reasonCode: string;
-  @Column({ type: 'varchar', length: 30, default: DisputeStage.OPENED }) stage: DisputeStage;
-  @Column({ type: 'varchar', length: 10, nullable: true }) deadline: string | null;
-  @Column({ type: 'int', nullable: true }) disputedAmount: number | null;
-  @Column({ type: 'varchar', length: 10, nullable: true }) winner: 'ISSUER' | 'ACQUIRER' | null;
-  @Column({ type: 'int', nullable: true }) arbitrationFees: number | null;
-  @CreateDateColumn() createdAt: Date;
-}
-
-@Entity('dispute_events')
-@Index(['disputeId'])
-export class DisputeEvent {
-  @PrimaryGeneratedColumn('uuid') id: string;
-  @Column({ type: 'varchar', length: 36 }) disputeId: string;
-  @Column({ type: 'varchar', length: 30 }) action: string;
-  @Column({ type: 'varchar', length: 10 }) party: string;
-  @Column({ type: 'varchar', length: 120 }) actor: string;
-  @Column({ type: 'varchar', length: 10 }) occurredOn: string;
-  @Column({ type: 'varchar', length: 30 }) toStage: string;
-  @Column({ type: 'varchar', length: 4, nullable: true }) mti: string | null;
-  @Column({ type: 'varchar', length: 3, nullable: true }) functionCode: string | null;
-  @Column({ type: 'int', nullable: true }) amount: number | null;
-  /** Référence de la pièce stockée (analysée par l'antivirus). */
-  @Column({ type: 'varchar', length: 300, nullable: true }) documentRef: string | null;
-  /** Acheminement du message ISO vers la plateforme Chargeback : PENDING, ACKED, REJECTED ou FAILED. */
-  @Column({ type: 'varchar', length: 10, nullable: true }) deliveryStatus: 'PENDING' | 'ACKED' | 'REJECTED' | 'FAILED' | null;
-  /** Code action ISO (champ 39) renvoyé par la plateforme. */
-  @Column({ type: 'varchar', length: 3, nullable: true }) actionCode: string | null;
-  @Column({ type: 'varchar', length: 300, nullable: true }) deliveryDetail: string | null;
-}
+export { Dispute, DisputeEvent } from './dispute.entities';
 
 // ---------- DTO ----------
 
@@ -110,6 +66,8 @@ export class DisputesService {
     private readonly audit: AuditService,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly inbox: Inbox,
+    private readonly files: FilesService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async open(dto: OpenDisputeDto, actor: string) {
@@ -135,7 +93,8 @@ export class DisputesService {
     return { ...d, events: await this.events.find({ where: { disputeId: id } }) };
   }
 
-  act(id: string, dto: DisputeActionDto, actor: string) {
+  async act(id: string, dto: DisputeActionDto, actor: string) {
+    if (dto.documentRef && /^[0-9a-f-]{36}$/i.test(dto.documentRef)) await this.files.assertBelongs(dto.documentRef, 'DISPUTE', id);
     return this.apply(id, dto.action, { party: dto.party, amount: dto.amount, newDocument: !!dto.documentRef }, actor, dto.documentRef);
   }
 
@@ -195,6 +154,14 @@ export class DisputesService {
       return s;
     });
     await this.audit.record({ actor, action: `dispute.${action}`, objectType: 'dispute', objectId: d.id, details: { party: input.party, stage: d.stage } });
+    // L'autre partie est prévenue ; une demande d'arbitrage va à l'équipe d'arbitrage.
+    const text = `Litige ${saved.transactionRef} : ${action}${res.deadline ? `, réponse attendue avant le ${res.deadline}` : ''}.`;
+    if (input.party === 'ISSUER') await this.notifications.toBank(saved.acquirerId, 'Litige : action de l’émetteur', text, `/litiges/${saved.id}`);
+    if (input.party === 'ACQUIRER') await this.notifications.toBank(saved.issuerId, 'Litige : action de l’acquéreur', text, `/litiges/${saved.id}`);
+    if (input.party === 'SMT') {
+      for (const b of [saved.issuerId, saved.acquirerId]) await this.notifications.toBank(b, 'Litige : décision d’arbitrage', `Litige ${saved.transactionRef} : décision rendue.`, `/litiges/${saved.id}`);
+    }
+    if (action === 'arbitration-request') await this.notifications.toTeam('ARBITRAGE', 'Arbitrage demandé', `Litige ${saved.transactionRef} à inscrire en séance.`, `/litiges/${saved.id}`);
     return { ...saved, message: res.message };
   }
 
@@ -206,6 +173,7 @@ export class DisputesService {
     ev.actionCode = p.actionCode ?? null;
     ev.deliveryDetail = p.detail?.slice(0, 300) ?? null;
     await m.save(ev);
+    if (p.status !== 'ACKED') await this.notifications.toTeam('LITIGES', 'Message de litige non accusé', `Message ${ev.mti}/${ev.functionCode} : ${p.status}${p.actionCode ? ` (code ${p.actionCode})` : ''}.`, `/litiges/${ev.disputeId}`, m);
     await this.audit.record({ actor: 'connecteur-chargeback', action: `dispute.message.${p.status.toLowerCase()}`, objectType: 'dispute', objectId: ev.disputeId, details: { eventId: ev.id, mti: ev.mti, actionCode: ev.actionCode } });
   }
 
@@ -270,7 +238,7 @@ export class DisputesController {
 }
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Dispute, DisputeEvent, Partner]), AuditModule],
+  imports: [TypeOrmModule.forFeature([Dispute, DisputeEvent, Partner]), AuditModule, FilesModule],
   providers: [DisputesService],
   controllers: [DisputesController],
   exports: [DisputesService],

@@ -76,6 +76,13 @@ CLAUDE.md           contexte du projet : contraintes, architecture, conventions,
 cd connectors && npm ci && npm test     # codec ISO 8583, signature des webhooks, traduction des litiges
 ```
 
+## Fichiers, notifications, contenus, accès (lot 5a)
+
+- **Fichiers** : toute pièce (demandes, litiges, mises en service, bibliothèque) est analysée par ClamAV (`zINSTREAM`) avant d'être stockée dans SeaweedFS (filer, préfixe `/apim`). Un fichier infecté est refusé et tracé dans l'audit. Si l'antivirus est indisponible, rien n'est stocké (503). Types acceptés : PDF, PNG, JPEG, TXT, CSV, DOCX, XLSX ; 3 Mo au maximum. Une banque ne voit que les pièces de ses dossiers ; les pièces d'un litige sont visibles des deux banques et de SMT. Le téléchargement se fait toujours en pièce jointe (`nosniff`).
+- **Notifications** : la cloche du portail et de la console. Une banque est prévenue d'un changement d'état de ses demandes, d'une action de l'autre partie dans un litige, d'une étape de mise en service et d'une publication. Les équipes SMT reçoivent les nouvelles demandes, les validations attendues, les arbitrages, les messages ISO non accusés, et les alertes de délai (75 % et 100 %, une seule fois par niveau, vérifiées toutes les 15 minutes).
+- **Contenus** (console, section Administration) : communiqués (les importants s'affichent sur l'accueil), événements, enquêtes (une réponse par utilisateur, résultats agrégés) et bibliothèque versionnée. Chaque contenu est ciblé sur toutes les banques ou une sélection.
+- **Gestion des accès** : l'administrateur sécurité d'une banque gère ses utilisateurs (rôles `banque-*` seulement) ; l'administrateur SMT gère ceux de la console. Le mot de passe temporaire n'est affiché qu'une fois ; le changement de mot de passe et la double authentification sont imposés à la première connexion. On ne peut ni retirer son propre rôle d'administrateur, ni désactiver son propre compte. Le back-end passe par le compte de service Keycloak `backend-admin` (`manage-users`, `view-users`, `query-users`) ; son secret, `KEYCLOAK_BACKEND_SECRET`, est injecté dans le royaume à l'import.
+
 ## Front-end (lot 3)
 
 `frontend/` contient deux applications React (Vite, TypeScript) et une bibliothèque commune :

@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  api, post, Card, ErrorBanner, Field, formatDate, FULL_PAN, Loading, PageHeader, Pill, Table,
+  api, post, Attachments, Card, ErrorBanner, Field, formatDate, FULL_PAN, Loading, PageHeader, Pill, Table,
   REQUEST_STATUS, REQUEST_TYPE, SLA, OPERATION_SERVICE,
 } from '@smt/ui';
 import { useCan } from '../session';
@@ -145,6 +145,9 @@ export function DemandeDetail() {
           {r.externalMessage && <><dt>Message de SMT</dt><dd>{r.externalMessage}</dd></>}
           {r.rejectionReason && <><dt>Motif du rejet</dt><dd>{r.rejectionReason}</dd></>}
         </dl>
+      </Card>
+      <Card title="Pièces jointes">
+        <Attachments ownerType="REQUEST" ownerId={r.id} apiBase="/portal/files" canUpload={can} />
       </Card>
       <ErrorBanner error={act.error} />
       {can && (

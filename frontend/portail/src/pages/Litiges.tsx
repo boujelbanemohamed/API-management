@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  api, post, Card, ErrorBanner, Field, formatAmount, formatDate, Loading, MASKED_PAN, PageHeader, Pill, Table, toMillimes,
+  api, post, Attachments, Card, FileInfo, ErrorBanner, Field, formatAmount, formatDate, Loading, MASKED_PAN, PageHeader, Pill, Table, toMillimes,
   DISPUTE_ACTION, DISPUTE_STAGE, DELIVERY,
 } from '@smt/ui';
 import { useCan, useMe } from '../session';
@@ -136,6 +136,7 @@ export function LitigeDetail() {
   const [amount, setAmount] = useState('');
   const [documentRef, setDocumentRef] = useState('');
   const q = useQuery({ queryKey: ['disputes', 'one', id], queryFn: () => api<Dispute>(`/portal/disputes/${id}`) });
+  const files = useQuery({ queryKey: ['files', 'DISPUTE', id], queryFn: () => api<FileInfo[]>(`/portal/files?ownerType=DISPUTE&ownerId=${id}`) });
   const act = useMutation({
     mutationFn: () =>
       post<Dispute>(`/portal/disputes/${id}/actions`, {
@@ -184,8 +185,13 @@ export function LitigeDetail() {
               </Field>
             )}
             {action && action !== 'accept' && (
-              <Field label="Référence du justificatif" hint={action === 'second-chargeback' ? 'Obligatoire : un nouveau justificatif' : 'Facultatif'}>
-                {(p) => <input {...p} value={documentRef} onChange={(e) => setDocumentRef(e.target.value)} required={action === 'second-chargeback'} />}
+              <Field label="Justificatif" hint={action === 'second-chargeback' ? 'Obligatoire : un nouveau justificatif, déposé ci-dessous' : 'Facultatif : choisissez une pièce déposée ci-dessous'}>
+                {(p) => (
+                  <select {...p} value={documentRef} onChange={(e) => setDocumentRef(e.target.value)} required={action === 'second-chargeback'}>
+                    <option value="">{action === 'second-chargeback' ? 'Choisir…' : 'Aucun'}</option>
+                    {(files.data ?? []).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                  </select>
+                )}
               </Field>
             )}
             <ErrorBanner error={act.error} />
@@ -193,6 +199,9 @@ export function LitigeDetail() {
           </form>
         </Card>
       )}
+      <Card title="Pièces du litige (visibles des deux banques et de SMT)">
+        <Attachments ownerType="DISPUTE" ownerId={d.id} apiBase="/portal/files" canUpload={can && !d.stage.startsWith('CLOSED')} />
+      </Card>
       <Card title="Historique">
         {(d.events ?? []).length === 0 ? <p className="kpi-label">Aucune action pour l’instant.</p> : (
           <ol className="timeline">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ErrorBanner, Field, formatDate, Loading, PageHeader, Pill, Table, REQUEST_STATUS, REQUEST_TYPE, SLA } from '@smt/ui';
+import { Attachments, ErrorBanner, Field, formatDate, Loading, PageHeader, Pill, Table, REQUEST_STATUS, REQUEST_TYPE, SLA } from '@smt/ui';
 import { useCan, useMe } from '../session';
 import { askReason, useAction, useList } from '../common';
 
@@ -12,6 +12,7 @@ export function FileDemandes() {
   const can = useCan('demandes');
   const [team, setTeam] = useState('');
   const [status, setStatus] = useState('');
+  const [files, setFiles] = useState<string | null>(null);
   const qs = new URLSearchParams({ ...(team && { team }), ...(status && { status }) }).toString();
   const q = useList<Req>('requests', `/requests${qs ? `?${qs}` : ''}`);
   const partners = useList<{ id: string; code: string }>('partners', '/partners');
@@ -66,6 +67,7 @@ export function FileDemandes() {
             { header: 'Échéance', cell: (r) => formatDate(r.dueDate) },
             { header: 'État', cell: (r) => <Pill label={REQUEST_STATUS[r.status]} /> },
             { header: 'Délai', cell: (r) => <Pill label={SLA[r.sla]} /> },
+            { header: 'Pièces', cell: (r) => files === r.id ? <><Attachments ownerType="REQUEST" ownerId={r.id} apiBase="/files" canUpload={can} /><button className="btn btn-secondary" onClick={() => setFiles(null)}>Fermer</button></> : <button className="btn btn-secondary" onClick={() => setFiles(r.id)}>Voir les pièces</button> },
             { header: 'Actions', cell: actions },
           ]}
         />

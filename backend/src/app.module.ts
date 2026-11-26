@@ -3,6 +3,11 @@ import { DataSource } from 'typeorm';
 import { InMemoryBus, MESSAGE_BUS, MessageBus, RabbitBus } from './integration/message-bus';
 import { InboxMessage, OutboxMessage } from './integration/outbox';
 import { IntegrationModule } from './integration/integration.module';
+import { ClamdScanner, FILE_STORE, FileStore, SeaweedFilerStore, VIRUS_SCANNER, VirusScanner } from './files/storage';
+import { FilesModule, StoredFile } from './files/files.module';
+import { Notification, NotificationsModule } from './notifications/notifications.module';
+import { Content, ContentsModule, SurveyResponse } from './contents/contents.module';
+import { UserDirectory, UsersModule, userDirectoryProvider } from './users/users.module';
 import { OperationsClient, OperationsModule, operationsClientProvider } from './operations/operations.module';
 import { KeycloakTokenVerifier, TOKEN_VERIFIER, TokenVerifier } from './auth/token-verifier';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
@@ -51,6 +56,10 @@ export const ENTITIES = [
   DisputeEvent,
   OutboxMessage,
   InboxMessage,
+  StoredFile,
+  Notification,
+  Content,
+  SurveyResponse,
 ];
 
 export interface AppModuleOptions {
@@ -66,6 +75,9 @@ export interface AppModuleOptions {
   messageBus?: MessageBus;
   /** Par défaut : HTTP vers les adresses OPS_*_URL. */
   operationsClient?: OperationsClient;
+  fileStore?: FileStore;
+  virusScanner?: VirusScanner;
+  userDirectory?: UserDirectory;
 }
 
 @Controller('health')
@@ -129,6 +141,9 @@ class CoreModule {
         },
       },
       operationsClientProvider(config, options.operationsClient),
+      userDirectoryProvider(config, options.userDirectory),
+      { provide: FILE_STORE, useFactory: () => options.fileStore ?? new SeaweedFilerStore(config.files?.filerUrl ?? 'http://seaweedfs:8888') },
+      { provide: VIRUS_SCANNER, useFactory: () => options.virusScanner ?? new ClamdScanner(config.files?.clamavHost ?? 'clamav', config.files?.clamavPort ?? 3310) },
       {
         provide: TOKEN_VERIFIER,
         useFactory: () =>
@@ -179,8 +194,12 @@ export class AppModule {
         OnboardingModule,
         DisputesModule,
         IntegrationModule,
+        NotificationsModule,
         PortalModule,
         OperationsModule,
+        FilesModule,
+        ContentsModule,
+        UsersModule,
       ],
       controllers: [HealthController, ConsoleMeController],
     };

@@ -128,6 +128,16 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "backend-admin",
+      "name": "Back-end : gestion des utilisateurs (compte de service)",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_BACKEND_SECRET}"
     }
   ],
   "components": {
@@ -142,5 +152,20 @@
         }
       }
     ]
-  }
+  },
+  "users": [
+    {
+      "username": "service-account-backend-admin",
+      "enabled": true,
+      "serviceAccountClientId": "backend-admin",
+      "clientRoles": {
+        "realm-management": [
+          "view-users",
+          "query-users",
+          "manage-users",
+          "view-realm"
+        ]
+      }
+    }
+  ]
 }

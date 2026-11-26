@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api, Card, ErrorBanner, Field, formatAmount, formatDate, Loading, PageHeader, Pill, Table, toMillimes, DISPUTE_ACTION, DISPUTE_STAGE, DELIVERY } from '@smt/ui';
+import { api, Attachments, Card, ErrorBanner, Field, formatAmount, formatDate, Loading, PageHeader, Pill, Table, toMillimes, DISPUTE_ACTION, DISPUTE_STAGE, DELIVERY } from '@smt/ui';
 import { useHasRole } from '../session';
 import { useAction, useList } from '../common';
 
@@ -71,6 +71,9 @@ export function LitigeConsoleDetail() {
           ) : <div className="banner banner-info">Décision réservée à l’arbitre.</div>}
         </Card>
       )}
+      <Card title="Pièces du litige">
+        <Attachments ownerType="DISPUTE" ownerId={d.id} apiBase="/files" canUpload={false} />
+      </Card>
       <Card title="Historique et messages ISO">
         <ol className="timeline">
           {(d.events ?? []).map((ev) => (

@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  api, patch, post, Card, ErrorBanner, formatDate, Loading, PageHeader, Pill, Steps, Table,
+  api, patch, post, Attachments, Card, ErrorBanner, formatDate, Loading, PageHeader, Pill, Steps, Table,
   CASE_STATUS, ONBOARDING_STEP, STEP_ORDER, TEST_MODE,
 } from '@smt/ui';
 import { useCan, useMe } from '../session';
@@ -74,6 +74,9 @@ export function MiseEnServiceDetail() {
           <dt>PV signé par la banque</dt><dd>{o.bankSignedBy ?? 'Non'}</dd>
           <dt>PV signé par SMT</dt><dd>{o.smtSignedBy ?? 'Non'}</dd>
         </dl>
+      </Card>
+      <Card title="Documents (contrat, PV de recette, preuves)">
+        <Attachments ownerType="ONBOARDING" ownerId={o.id} apiBase="/portal/files" canUpload={canTest || isSecurityAdmin} />
       </Card>
       <Card title="Cahier de tests">
         <Table

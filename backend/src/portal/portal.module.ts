@@ -2,8 +2,6 @@ import {
   BadRequestException,
   Body,
   Controller,
-  createParamDecorator,
-  ExecutionContext,
   Get,
   HttpCode,
   Module,
@@ -33,8 +31,8 @@ import { UsageModule } from '../usage/usage.module';
 import { UsageService } from '../usage/usage.service';
 import { isIsoDate } from '../common/dates';
 
-/** Banque connectée, posée par PortalGuard. */
-export const Bank = createParamDecorator((_d: unknown, ctx: ExecutionContext): BankContext => ctx.switchToHttp().getRequest().bank);
+export { Bank } from './bank.decorator';
+import { Bank } from './bank.decorator';
 
 /** Ressource d'une autre banque : 404, pour ne pas révéler son existence. */
 function own<T>(item: T, belongs: boolean): T {

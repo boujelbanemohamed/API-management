@@ -11,6 +11,9 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { AuditModule } from '../audit/audit.module';
 import { AuditService } from '../audit/audit.service';
 import { findOr404 } from '../common/crud';
+import { NotificationsService } from '../notifications/notifications.module';
+
+const STEP_LABEL: Record<OnboardingStep, string> = { REQUEST: 'demande', CONTRACT: 'contrat', SANDBOX: 'sandbox', TESTS: 'tests', ACCEPTANCE: 'recette', PRODUCTION: 'production' };
 import { ConsoleGuard, Section } from '../auth/guards';
 import { Actor } from '../common/actor.decorator';
 
@@ -56,6 +59,7 @@ export class OnboardingService {
     @InjectRepository(OnboardingTestCase) private readonly cases: Repository<OnboardingTestCase>,
     private readonly subscriptions: SubscriptionsService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(dto: CreateOnboardingDto, actor: string) {
@@ -125,6 +129,8 @@ export class OnboardingService {
     assertCanSign(o, party);
     if (party === 'BANK') o.bankSignedBy = actor;
     else o.smtSignedBy = actor;
+    if (party === 'BANK') await this.notifications.toTeam('INTEGRATION', 'PV signé par la banque', `Le PV de recette a été signé par ${actor} ; signature SMT attendue.`, `/mises-en-service/${o.id}`);
+    else await this.notifications.toBank(o.partnerId, 'PV signé par SMT', 'SMT a signé le PV de recette.', `/mises-en-service/${o.id}`);
     return this.save(o, actor, 'sign', { party });
   }
 
@@ -140,7 +146,9 @@ export class OnboardingService {
     }
     const from = o.step;
     o.step = target;
-    return this.save(o, actor, 'advance', { from, to: target });
+    const saved = await this.save(o, actor, 'advance', { from, to: target });
+    await this.notifications.toBank(o.partnerId, 'Mise en service', `Votre mise en service passe à l’étape : ${STEP_LABEL[target]}.`, `/mises-en-service/${o.id}`);
+    return saved;
   }
 
   async cancel(id: string, actor: string) {

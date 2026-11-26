@@ -39,6 +39,7 @@ Portail React → back-end NestJS (métier + BFF du portail) → APISIX → four
 - `gateway/apisix/plugins/` : plugins Lua.
 - `backend/src/integration/` : bus (RabbitMQ ou mémoire), relais outbox, réception idempotente (`Inbox`). Sujets dans `message-bus.ts` (TOPICS). Une action qui doit partir vers un fournisseur appelle `enqueue(manager, topic, payload)` dans sa transaction.
 - `backend/src/operations/` : adaptateur de lecture des fournisseurs (`OperationsClient`, adresses `OPS_*_URL`), filtre sur la banque du jeton et masquage des cartes (`ownOnly`, `maskDeep`) appliqués à toute donnée fournisseur.
+- `backend/src/files/` (`storage.ts` : `SeaweedFilerStore`, `ClamdScanner`), `notifications/`, `contents/`, `users/` (`KeycloakDirectory`).
 - `connectors/` : connecteurs (`chargeback/`, `cockpit/`) et simulateurs (`sim/`), Node 22 TypeScript, une image ; codec `iso8583.ts`.
 - `frontend/` : npm workspaces `ui` (charte, composants, client HTTP, Keycloak), `portail`, `console` ; parcours `e2e/` (Playwright, `CHROME_PATH` pour un Chrome local). Les droits d'écriture côté écran (`session.tsx`) reprennent `backend/src/auth/roles.ts` : les garder alignés.
 
@@ -69,4 +70,5 @@ https://github.com/boujelbanemohamed/API-management, branche `main`. Pousser seu
 | 3 | Front React : portail et console | Fait et poussé le 2026-11-26 : 12 parcours Playwright sur vrai back-end + Keycloak, tests unitaires ; écrans des lots 4-5 marqués « Bientôt » |
 | 4a | Couche d'intégration : RabbitMQ, outbox/inbox, connecteurs Chargeback (codec ISO 8583:1993 maison, jamais jPOS qui est AGPL) et Cockpit (webhooks HMAC), simulateurs | Fait et poussé le 2026-11-26 : QA sur RabbitMQ réel (pannes courtier, connecteur, plateforme ; webhooks falsifiés et rejoués) ; formats à confirmer avec les vraies spécifications |
 | 4b | Simulateurs SVIP, Plateforme 1, Cockpit en lecture ; BFF `portal/operations` ; six écrans « Opérations » du portail | Fait et poussé le 2026-11-26 : 18 parcours Playwright ; interfaces supposées, réglables (Mohamed : « tout est modulable, on ajustera ») |
-| 5 | Fichiers et antivirus, notifications, contenus, facturation globale, assistant IA | À faire |
+| 5a | Fichiers (ClamAV puis SeaweedFS), notifications, contenus (communiqués, événements, enquêtes, bibliothèque), gestion des accès (API d'administration Keycloak) | Fait et poussé le 2026-11-26 : QA sur ClamAV (EICAR), SeaweedFS et Keycloak réels ; 25 parcours Playwright |
+| 5b | Facturation globale et rapprochement, identifiants et sandbox du portail, cahiers de tests, assistant IA, paramètres et supervision | À faire |

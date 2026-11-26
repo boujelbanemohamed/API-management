@@ -61,6 +61,10 @@ export class ServiceRequest {
   @Column({ type: 'varchar', length: 20, nullable: true })
   routedTo: string | null;
 
+  /** Dernier niveau d'alerte de délai notifié (ALERT, BREACH). */
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  alertLevel: string | null;
+
   /** Dernier message du système traitant (ex. information demandée par le Cockpit). */
   @Column({ type: 'varchar', length: 300, nullable: true })
   externalMessage: string | null;

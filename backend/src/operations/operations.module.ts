@@ -2,7 +2,7 @@ import { Controller, Get, HttpException, HttpStatus, Inject, Injectable, Module,
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_CONFIG, AppConfig } from '../config';
 import { BankContext, PortalArea, PortalGuard } from '../auth/guards';
-import { Bank } from '../portal/portal.module';
+import { Bank } from '../portal/bank.decorator';
 import { Partner } from '../partners/partner.entity';
 
 /**

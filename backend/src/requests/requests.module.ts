@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Inject, Injectable, Logger, Module, NotFoundException, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { FindOptionsWhere, In, Repository } from 'typeorm';
 import { IsBoolean, IsEnum, IsIn, IsInt, IsObject, IsOptional, IsString, IsUUID, Matches, MaxLength, Min } from 'class-validator';
 import { Holiday, ServiceCommitment, ServiceRequest } from './request.entities';
 import {
@@ -19,6 +19,7 @@ import {
 import { enqueue } from '../integration/outbox';
 import { TOPICS } from '../integration/message-bus';
 import { Inbox } from '../integration/integration.module';
+import { NotificationsService, Team } from '../notifications/notifications.module';
 import { BusinessRuleError } from '../subscriptions/subscription-rules';
 import { WorkingCalendar } from '../common/working-days';
 import { CLOCK, Clock } from '../common/clock';
@@ -75,6 +76,7 @@ export class RequestsService {
     private readonly audit: AuditService,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly inbox: Inbox,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private readonly logger = new Logger('Demandes');
@@ -121,6 +123,7 @@ export class RequestsService {
       return r;
     });
     await this.log(actor, 'create', req, { type: req.type, team, slaDays, routedTo: route });
+    if (!route) await this.notifications.toTeam(team as Team, `Nouvelle demande ${partner.code}`, `« ${req.subject} » (${dto.type}).`, '/demandes');
     return req;
   }
 
@@ -165,6 +168,7 @@ export class RequestsService {
       r.suspendedSince = today;
     }
     await m.save(r);
+    if (from !== r.status) await this.notifyChange(r);
     await this.audit.record({ actor: 'connecteur-cockpit', action: `request.cockpit.${p.status.toLowerCase()}`, objectType: 'request', objectId: r.id, details: { from, to: r.status } });
   }
 
@@ -293,8 +297,48 @@ export class RequestsService {
     apply(r, this.clock.today(), cal);
     const saved = await this.repo.save(r);
     await this.log(actor, action, saved, { from, to: saved.status });
+    if (from !== saved.status) await this.notifyChange(saved);
     return this.view(saved, cal);
   }
+
+  /** Changement d'état : la banque est prévenue ; une validation attendue est signalée à l'équipe. */
+  private async notifyChange(r: ServiceRequest) {
+    const msg: Partial<Record<RequestStatus, string>> = {
+      [RequestStatus.IN_PROGRESS]: 'est prise en charge par SMT',
+      [RequestStatus.WAITING_BANK]: `attend une réponse de votre part${r.externalMessage ? ` : ${r.externalMessage}` : ''}`,
+      [RequestStatus.DONE]: 'a été traitée',
+      [RequestStatus.REJECTED]: `a été rejetée${r.rejectionReason ? ` : ${r.rejectionReason}` : ''}`,
+      [RequestStatus.CLOSED]: 'est clôturée',
+    };
+    const text = msg[r.status];
+    if (text) await this.notifications.toBank(r.partnerId, 'Mise à jour de votre demande', `Votre demande « ${r.subject} » ${text}.`, `/demandes/${r.id}`);
+    if (r.status === RequestStatus.AWAITING_VALIDATION) await this.notifications.toTeam(r.team as Team, 'Validation attendue', `La demande « ${r.subject} » attend une seconde validation.`, '/demandes');
+  }
+
+  /** Alerte de délai (75 %) et dépassement (100 %) : une seule notification par niveau. */
+  async checkSla(): Promise<number> {
+    const cal = await this.calendar();
+    const today = this.clock.today();
+    let sent = 0;
+    for (const r of await this.repo.find({ where: { status: In([RequestStatus.NEW, RequestStatus.IN_PROGRESS, RequestStatus.AWAITING_VALIDATION]) } })) {
+      const level = slaLevel(r, cal, today);
+      if ((level === 'ALERT' || level === 'BREACH') && r.alertLevel !== level) {
+        r.alertLevel = level;
+        await this.repo.save(r);
+        await this.notifications.toTeam(r.team as Team, level === 'ALERT' ? 'Délai bientôt atteint' : 'Délai dépassé', `Demande « ${r.subject} » : échéance le ${dueDate(r, cal, today)}.`, '/demandes');
+        sent++;
+      }
+    }
+    return sent;
+  }
+
+  onApplicationBootstrap() {
+    if (process.env.DISABLE_JOBS !== 'true') this.slaTimer = setInterval(() => void this.checkSla().catch((e) => this.logger.error(e.message)), 15 * 60_000);
+  }
+  onModuleDestroy() {
+    clearInterval(this.slaTimer);
+  }
+  private slaTimer?: NodeJS.Timeout;
 
   private log(actor: string, action: string, r: ServiceRequest, details: Record<string, unknown>) {
     return this.audit.record({ actor, action: `request.${action}`, objectType: 'request', objectId: r.id, details });

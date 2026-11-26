@@ -113,6 +113,8 @@ services:
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KC_HEALTH_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded
+      # Secret du compte de service du back-end (gestion des accès), injecté dans le royaume à l'import.
+      KEYCLOAK_BACKEND_SECRET: ${KEYCLOAK_BACKEND_SECRET:?KEYCLOAK_BACKEND_SECRET manquant}
     volumes:
       - ./keycloak/realm-smt.json:/opt/keycloak/data/import/realm-smt.json:ro,z
     healthcheck:
@@ -124,7 +126,7 @@ services:
   seaweedfs:
     <<: *restart
     image: docker.io/chrislusf/seaweedfs:3.80
-    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-master.volumeSizeLimitMB=1024"]
+    command: ["server", "-dir=/data", "-filer", "-filer.port=8888", "-s3", "-s3.port=8333", "-master.volumeSizeLimitMB=1024"]
     volumes:
       - seaweeddata:/data
     healthcheck:
@@ -165,6 +167,7 @@ services:
       valkey: { condition: service_healthy }
       apisix: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
     environment:
       PORT: 3000
       ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:?ADMIN_API_TOKEN manquant}
@@ -191,6 +194,11 @@ services:
       OPS_COCKPIT_URL: ${OPS_COCKPIT_URL:-http://sim-cockpit-lecture:8094}
       OPS_API_KEY: ${OPS_API_KEY:-}
       KEYCLOAK_ISSUER: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8081}/realms/smt
+      KEYCLOAK_ADMIN_URL: http://keycloak:8080
+      KEYCLOAK_BACKEND_SECRET: ${KEYCLOAK_BACKEND_SECRET}
+      SEAWEED_FILER_URL: http://seaweedfs:8888
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
       KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/smt/protocol/openid-connect/certs
 
   # --- Couche d'intégration (lot 4) : un connecteur par fournisseur, redémarré automatiquement en cas de coupure ---

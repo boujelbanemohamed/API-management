@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { AppShell, NavGroup } from '@smt/ui';
+import { AppShell, NavGroup, NotificationsBell } from '@smt/ui';
 import { useMe } from './session';
 import { Accueil } from './pages/Accueil';
 import { DemandesListe, DemandeNouvelle, DemandeDetail } from './pages/Demandes';
@@ -7,13 +7,16 @@ import { LitigesListe, LitigeNouveau, LitigeDetail } from './pages/Litiges';
 import { MisesEnServiceListe, MiseEnServiceDetail } from './pages/MisesEnService';
 import { Catalogue } from './pages/Catalogue';
 import { Consommation } from './pages/Consommation';
+import { Bibliotheque, ContenuDetail } from './pages/Contenus';
+import { GestionAcces } from './pages/Acces';
 import { AccesSmartVista, Affiliation, Commercants, Gab, ServicesCartes, Transactions } from './pages/Operations';
 
 const LOT4 = 'Disponible au lot 5';
 const LOT5 = 'Disponible au lot 5';
 
 /** Menu du portail (structure validée sur les maquettes), filtré selon les sections autorisées. */
-function menu(sections: string[]): NavGroup[] {
+function menu(sections: string[], roles: string[]): NavGroup[] {
+  const admin = roles.includes('banque-admin-securite');
   const has = (s: string) => sections.includes(s);
   const groups: NavGroup[] = [
     { items: [{ label: 'Accueil', to: '/' }] },
@@ -43,11 +46,11 @@ function menu(sections: string[]): NavGroup[] {
     },
     {
       label: 'Ressources',
-      items: [{ label: 'Bibliothèque', soon: LOT5 }, { label: 'Assistant IA', soon: LOT5 }, has('demandes') ? { label: 'Support', to: '/demandes/nouvelle?type=SUPPORT' } : { label: 'Support', soon: LOT5 }],
+      items: [{ label: 'Bibliothèque', to: '/bibliotheque' }, { label: 'Assistant IA', soon: LOT5 }, has('demandes') ? { label: 'Support', to: '/demandes/nouvelle?type=SUPPORT' } : { label: 'Support', soon: LOT5 }],
     },
     has('compte') && {
       label: 'Compte',
-      items: [{ label: 'Consommation et facturation', to: '/compte/consommation' }, { label: 'Gestion des accès', soon: LOT5 }],
+      items: [{ label: 'Consommation et facturation', to: '/compte/consommation' }, ...(admin ? [{ label: 'Gestion des accès', to: '/compte/acces' }] : [])],
     },
   ].filter(Boolean) as NavGroup[];
   return groups;
@@ -58,7 +61,7 @@ export function App() {
   const has = (s: string) => me.sections.includes(s);
   return (
     <Routes>
-      <Route element={<AppShell brand="Portail SMT" menuLabel="Menu du portail" groups={menu(me.sections)} context={<span className="pill pill-accent">{me.partner.name}</span>} />}>
+      <Route element={<AppShell brand="Portail SMT" menuLabel="Menu du portail" groups={menu(me.sections, me.roles)} context={<><NotificationsBell base="/portal/notifications" /><span className="pill pill-accent">{me.partner.name}</span></>} />}>
         <Route index element={<Accueil />} />
         {has('operations') && (
           <>
@@ -92,6 +95,9 @@ export function App() {
           </>
         )}
         {has('compte') && <Route path="compte/consommation" element={<Consommation />} />}
+        {me.roles.includes('banque-admin-securite') && <Route path="compte/acces" element={<GestionAcces />} />}
+        <Route path="bibliotheque" element={<Bibliotheque />} />
+        <Route path="contenus/:id" element={<ContenuDetail />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
