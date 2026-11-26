@@ -1,5 +1,8 @@
-import { Controller, DynamicModule, Get, Global, Inject, Module, Provider as NestProvider, Res } from '@nestjs/common';
+import { Controller, DynamicModule, Get, Global, Inject, Logger, Module, Provider as NestProvider, Res } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { InMemoryBus, MESSAGE_BUS, MessageBus, RabbitBus } from './integration/message-bus';
+import { InboxMessage, OutboxMessage } from './integration/outbox';
+import { IntegrationModule } from './integration/integration.module';
 import { KeycloakTokenVerifier, TOKEN_VERIFIER, TokenVerifier } from './auth/token-verifier';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import Redis from 'ioredis';
@@ -45,6 +48,8 @@ export const ENTITIES = [
   OnboardingTestCase,
   Dispute,
   DisputeEvent,
+  OutboxMessage,
+  InboxMessage,
 ];
 
 export interface AppModuleOptions {
@@ -56,6 +61,8 @@ export interface AppModuleOptions {
   rightsStore?: RightsStore;
   /** Par défaut : clés publiques de Keycloak. Les tests fournissent leurs propres clés. */
   tokenVerifier?: TokenVerifier;
+  /** Par défaut : RabbitMQ (AMQP_URL), sinon bus en mémoire. */
+  messageBus?: MessageBus;
 }
 
 @Controller('health')
@@ -107,6 +114,18 @@ class CoreModule {
         useFactory: () => options.gatewayAdmin ?? new ApisixAdminClient(config.apisix.adminUrl, config.apisix.adminKey),
       },
       {
+        provide: MESSAGE_BUS,
+        useFactory: () => {
+          if (options.messageBus) return options.messageBus;
+          const url = config.integration?.amqpUrl;
+          if (!url) {
+            new Logger('Integration').warn('AMQP_URL absent : bus en mémoire (aucun connecteur ne recevra les messages)');
+            return new InMemoryBus();
+          }
+          return new RabbitBus(url);
+        },
+      },
+      {
         provide: TOKEN_VERIFIER,
         useFactory: () =>
           options.tokenVerifier ?? new KeycloakTokenVerifier(config.keycloak.issuerUrl, config.keycloak.jwksUrl),
@@ -155,6 +174,7 @@ export class AppModule {
         RequestsModule,
         OnboardingModule,
         DisputesModule,
+        IntegrationModule,
         PortalModule,
       ],
       controllers: [HealthController, ConsoleMeController],

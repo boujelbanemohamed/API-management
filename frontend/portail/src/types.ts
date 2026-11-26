@@ -20,6 +20,7 @@ export interface ServiceRequest {
   sla: string;
   doneOn: string | null;
   rejectionReason: string | null;
+  externalMessage?: string | null;
 }
 
 export interface DisputeEvent {
@@ -33,6 +34,8 @@ export interface DisputeEvent {
   functionCode: string | null;
   amount: number | null;
   documentRef: string | null;
+  deliveryStatus?: string | null;
+  actionCode?: string | null;
 }
 
 export interface Dispute {

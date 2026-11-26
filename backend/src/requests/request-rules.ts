@@ -42,6 +42,14 @@ export const DEFAULT_COMMITMENTS: Record<RequestType, { team: string; slaDays: n
 };
 
 export const ALERT_RATIO = 0.75;
+
+/** Services traités par SMT Cockpit : la demande lui est transmise automatiquement (couche d'intégration). */
+export const COCKPIT_SERVICES = ['GAB', 'TPE', 'AFFILIATION'] as const;
+
+export function routeOf(type: RequestType, context: Record<string, string> | null | undefined): 'COCKPIT' | null {
+  const service = context?.service?.toUpperCase();
+  return type === RequestType.OPERATION && service && (COCKPIT_SERVICES as readonly string[]).includes(service) ? 'COCKPIT' : null;
+}
 export const REOPEN_WINDOW_DAYS = 5;
 
 const OPEN = [

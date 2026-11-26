@@ -40,6 +40,19 @@ test('opérateur : menu selon ses droits, demande avec carte masquée obligatoir
   requestUrl = page.url();
 });
 
+test('opérateur : une demande GAB part au Cockpit et revient traitée', async ({ page }) => {
+  await login(page, USERS.op.username, '/demandes/nouvelle');
+  await page.getByLabel('Service concerné').selectOption('GAB');
+  await page.getByLabel('Objet').fill(`Débloquer le GAB 0142 ${seed().run}`);
+  await page.getByRole('button', { name: 'Envoyer la demande' }).click();
+  await expect(page.getByText('Prise en charge')).toBeVisible();
+  await expect(async () => {
+    await page.reload();
+    await expect(page.getByText('Traitée', { exact: true })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 20_000 });
+  await expect(page.getByText('Opération exécutée')).toBeVisible();
+});
+
 test('cloisonnement : une autre banque ne voit pas la demande', async ({ page }) => {
   expect(requestUrl).not.toBe('');
   await login(page, USERS.litStb.username, new URL(requestUrl).pathname);
@@ -66,6 +79,11 @@ test('litige : la BNA ouvre et émet un chargeback partiel', async ({ page }) =>
   await page.getByLabel('Montant contesté (TND)').fill('50');
   await page.getByRole('button', { name: 'Valider l’action' }).click();
   await expect(page.getByText('1442/453')).toBeVisible();
+  // Le message ISO part vers la plateforme Chargeback (simulateur) et l'accusé revient.
+  await expect(async () => {
+    await page.reload();
+    await expect(page.getByText('Accusé par la plateforme')).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 20_000 });
   await expect(page.getByText('C’est à vous d’agir')).toHaveCount(0);
   disputeUrl = page.url();
 });

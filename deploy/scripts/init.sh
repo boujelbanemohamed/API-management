@@ -17,7 +17,7 @@ secret() { openssl rand -hex 16; }
 if [[ ! -f .env ]]; then
   echo "Génération de .env…"
   cp .env.example .env
-  for var in DB_PASSWORD KEYCLOAK_DB_PASSWORD KEYCLOAK_ADMIN_PASSWORD VALKEY_PASSWORD APISIX_ADMIN_KEY ADMIN_API_TOKEN USAGE_INGEST_TOKEN; do
+  for var in DB_PASSWORD KEYCLOAK_DB_PASSWORD KEYCLOAK_ADMIN_PASSWORD VALKEY_PASSWORD APISIX_ADMIN_KEY ADMIN_API_TOKEN USAGE_INGEST_TOKEN RABBITMQ_PASSWORD COCKPIT_SHARED_SECRET; do
     sed -i "s|^${var}=.*|${var}=$(secret)|" .env
   done
   chmod 600 .env

@@ -37,6 +37,8 @@ Portail React → back-end NestJS (métier + BFF du portail) → APISIX → four
   - portal (BFF du portail : la banque vient toujours du jeton, la ressource d'une autre banque répond 404).
 - Règles métier en fonctions pures : `*-rules.ts`. Calendrier tunisien : `common/working-days.ts`.
 - `gateway/apisix/plugins/` : plugins Lua.
+- `backend/src/integration/` : bus (RabbitMQ ou mémoire), relais outbox, réception idempotente (`Inbox`). Sujets dans `message-bus.ts` (TOPICS). Une action qui doit partir vers un fournisseur appelle `enqueue(manager, topic, payload)` dans sa transaction.
+- `connectors/` : connecteurs (`chargeback/`, `cockpit/`) et simulateurs (`sim/`), Node 22 TypeScript, une image ; codec `iso8583.ts`.
 - `frontend/` : npm workspaces `ui` (charte, composants, client HTTP, Keycloak), `portail`, `console` ; parcours `e2e/` (Playwright, `CHROME_PATH` pour un Chrome local). Les droits d'écriture côté écran (`session.tsx`) reprennent `backend/src/auth/roles.ts` : les garder alignés.
 
 ## Conventions
@@ -64,5 +66,6 @@ https://github.com/boujelbanemohamed/API-management, branche `main`. Pousser seu
 | 1 | Socle exécutable : compose Podman, configuration APISIX, `.env`, README | Poussé. QA du 2026-11-23 sur services réels (PostgreSQL 16, Valkey, etcd, Keycloak 26, SeaweedFS, simulateur) : OK. Reste à valider sur Podman : APISIX et le parcours `deploy/scripts/qa-lot1.sh` |
 | 2 | Sécurité : Keycloak, BFF, cloisonnement par banque | Fait et poussé le 2026-11-23 : 65 tests ; QA sur un vrai Keycloak 26 (jetons réels, deux banques) |
 | 3 | Front React : portail et console | Fait et poussé le 2026-11-26 : 12 parcours Playwright sur vrai back-end + Keycloak, tests unitaires ; écrans des lots 4-5 marqués « Bientôt » |
-| 4 | Couche d'intégration : RabbitMQ, schéma outbox, un connecteur par fournisseur (SVIP, Cockpit, Chargeback ISO 8583 avec une bibliothèque Apache ou MIT, jamais jPOS qui est AGPL), simulateurs | À faire (contrats d'API à fournir) |
+| 4a | Couche d'intégration : RabbitMQ, outbox/inbox, connecteurs Chargeback (codec ISO 8583:1993 maison, jamais jPOS qui est AGPL) et Cockpit (webhooks HMAC), simulateurs | Fait et poussé le 2026-11-26 : QA sur RabbitMQ réel (pannes courtier, connecteur, plateforme ; webhooks falsifiés et rejoués) ; formats à confirmer avec les vraies spécifications |
+| 4b | Simulateurs SVIP et Plateforme 1, écrans « Opérations » du portail | À faire (contrats d'API à fournir) |
 | 5 | Fichiers et antivirus, notifications, contenus, facturation globale, assistant IA | À faire |

@@ -85,4 +85,19 @@ export const SUBSCRIPTION_STATUS: Record<string, Label> = {
   REJECTED: L('Refusé', 'danger'),
 };
 
+/** Acheminement d'un message ISO vers la plateforme Chargeback. */
+export const DELIVERY: Record<string, Label> = {
+  PENDING: L('Envoi en cours', 'info'),
+  ACKED: L('Accusé par la plateforme', 'ok'),
+  REJECTED: L('Refusé par la plateforme', 'danger'),
+  FAILED: L('Échec d’envoi', 'danger'),
+};
+
+export const OPERATION_SERVICE: Record<string, string> = {
+  CARTE: 'Carte',
+  GAB: 'GAB',
+  TPE: 'TPE',
+  AFFILIATION: 'Affiliation e-commerce',
+};
+
 export const ENVIRONMENT: Record<string, string> = { SANDBOX: 'Sandbox', PRODUCTION: 'Production' };

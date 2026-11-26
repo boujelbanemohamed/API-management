@@ -36,6 +36,10 @@ Arrêt : `podman compose --env-file .env -f deploy/compose.yaml down` (ajouter `
 | seaweedfs | Fichiers : pièces, PV, bibliothèque (API S3) | 8333 |
 | clamav | Antivirus des pièces déposées | — |
 | simulateur | Faux fournisseur derrière la sandbox | 8080 |
+| rabbitmq | Courtier de messages de la couche d'intégration | 5672, console 15672 |
+| connector-chargeback | Litiges → plateforme Chargeback (ISO 8583:1993 sur TCP) | — |
+| connector-cockpit | Demandes GAB, TPE, affiliation → SMT Cockpit ; réception des webhooks signés | — |
+| sim-chargeback, sim-cockpit | Simulateurs de la sandbox | — |
 | portail | Portail des banques (React, servi par nginx) | 5174 (exposé) |
 | console | Console SMT (React, servi par nginx) | 5173 (127.0.0.1 seulement) |
 
@@ -54,6 +58,18 @@ backend/            back-end NestJS (src/, test/, Containerfile)
 gateway/apisix/     plugins Lua de la passerelle (subscription-guard)
 deploy/             compose, configuration APISIX, royaume Keycloak, scripts
 CLAUDE.md           contexte du projet : contraintes, architecture, conventions, avancement
+```
+
+## Couche d'intégration (lot 4)
+
+- **Outbox** : une action métier et son message sont enregistrés dans la même transaction PostgreSQL (`outbox_messages`), puis le relais du back-end les publie sur RabbitMQ (échange `apim`). Si le courtier est en panne, l'action réussit quand même : les messages repartent ensuite avec un délai croissant. Les messages traités sont mémorisés (`inbox_messages`) : un message rejoué est ignoré. Un message impossible à traiter va dans la file de rebut `apim.dlq`.
+- **Litiges → Chargeback** : chaque action qui produit un message (1644, 1442, 1240, 1740) est encodée en ISO 8583:1993 et envoyée sur une connexion TCP persistante, avec un en-tête de longueur de 2 octets. La réponse (champ 39) apparaît dans l'historique : accusé, refusé ou échec d'envoi après 5 essais. La carte part masquée (champ 48) ; la transaction est identifiée par sa référence (champ 31). Ce format est à confirmer avec la spécification de la plateforme. Un écho réseau 1804 est envoyé chaque minute.
+- **Demandes → SMT Cockpit** : une demande d'opération GAB, TPE ou affiliation est transmise automatiquement au Cockpit. Ses retours par webhook (`POST /webhooks/cockpit` sur le connecteur) sont signés en HMAC-SHA256 sur « horodatage.corps » et refusés au-delà de 5 minutes. Ils clôturent la demande, la rejettent avec un motif ou la mettent en attente de la banque. Une opération sensible exécutée par le Cockpit reste à valider par un agent. Si le Cockpit est injoignable, la demande revient dans la file des agents.
+- **Simulateurs** (sandbox) : `sim-chargeback` accuse réception (code 000) ; il refuse un montant nul (110), le code motif 9999 (909) et une carte non masquée (902). `sim-cockpit` exécute l'ordre, le refuse si l'objet contient « REFUS », ou demande une information si l'objet contient « INFO ».
+- En production, renseignez `CHARGEBACK_HOST` et `COCKPIT_URL` dans `.env`. Vides, ces variables pointent vers les simulateurs.
+
+```bash
+cd connectors && npm ci && npm test     # codec ISO 8583, signature des webhooks, traduction des litiges
 ```
 
 ## Front-end (lot 3)

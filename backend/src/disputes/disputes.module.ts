@@ -13,6 +13,9 @@ import {
   initialDeadline,
 } from './dispute-rules';
 import { BusinessRuleError } from '../subscriptions/subscription-rules';
+import { enqueue } from '../integration/outbox';
+import { TOPICS } from '../integration/message-bus';
+import { Inbox } from '../integration/integration.module';
 import { CLOCK, Clock } from '../common/clock';
 import { findOr404 } from '../common/crud';
 import { Partner } from '../partners/partner.entity';
@@ -64,6 +67,11 @@ export class DisputeEvent {
   @Column({ type: 'int', nullable: true }) amount: number | null;
   /** Référence de la pièce stockée (analysée par l'antivirus). */
   @Column({ type: 'varchar', length: 300, nullable: true }) documentRef: string | null;
+  /** Acheminement du message ISO vers la plateforme Chargeback : PENDING, ACKED, REJECTED ou FAILED. */
+  @Column({ type: 'varchar', length: 10, nullable: true }) deliveryStatus: 'PENDING' | 'ACKED' | 'REJECTED' | 'FAILED' | null;
+  /** Code action ISO (champ 39) renvoyé par la plateforme. */
+  @Column({ type: 'varchar', length: 3, nullable: true }) actionCode: string | null;
+  @Column({ type: 'varchar', length: 300, nullable: true }) deliveryDetail: string | null;
 }
 
 // ---------- DTO ----------
@@ -101,6 +109,7 @@ export class DisputesService {
     @InjectRepository(Partner) private readonly partners: Repository<Partner>,
     private readonly audit: AuditService,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly inbox: Inbox,
   ) {}
 
   async open(dto: OpenDisputeDto, actor: string) {
@@ -150,6 +159,7 @@ export class DisputesService {
     return closed;
   }
 
+  /** Litige, événement et message ISO à envoyer : enregistrés ensemble ou pas du tout (outbox). */
   private async apply(id: string, action: DisputeAction, input: ActionInput, actor: string, documentRef?: string) {
     const d = await findOr404(this.repo, id, 'Litige');
     const res = applyAction(d, action, input, this.clock.today());
@@ -160,9 +170,47 @@ export class DisputesService {
       d.winner = input.winner ?? null;
       d.arbitrationFees = input.fees ?? null;
     }
-    const saved = await this.repo.save(d);
-    await this.record(saved, action, input.party, actor, res.message, input.amount ?? null, documentRef);
+    const [issuer, acquirer] = await Promise.all([
+      this.partners.findOneByOrFail({ id: d.issuerId }),
+      this.partners.findOneByOrFail({ id: d.acquirerId }),
+    ]);
+    const saved = await this.repo.manager.transaction(async (m) => {
+      const s = await m.save(d);
+      const ev = await m.save(
+        m.create(DisputeEvent, {
+          disputeId: s.id, action, party: input.party, actor, occurredOn: this.clock.today(), toStage: s.stage,
+          mti: res.message?.mti ?? null, functionCode: res.message?.functionCode ?? null,
+          amount: input.amount ?? (action === 'decide' ? (input.fees ?? null) : null), documentRef: documentRef ?? null,
+          deliveryStatus: res.message ? 'PENDING' : null, actionCode: null, deliveryDetail: null,
+        }),
+      );
+      if (res.message) {
+        await enqueue(m, TOPICS.chargebackOutgoing, {
+          eventId: ev.id, disputeId: s.id, mti: res.message.mti, functionCode: res.message.functionCode,
+          amount: action === 'decide' ? (input.fees ?? 0) : (input.amount ?? s.disputedAmount ?? s.transactionAmount),
+          currency: s.currency, maskedPan: s.maskedPan, transactionRef: s.transactionRef, transactionDate: s.transactionDate,
+          reasonCode: s.reasonCode, issuerCode: issuer.code, acquirerCode: acquirer.code,
+        });
+      }
+      return s;
+    });
+    await this.audit.record({ actor, action: `dispute.${action}`, objectType: 'dispute', objectId: d.id, details: { party: input.party, stage: d.stage } });
     return { ...saved, message: res.message };
+  }
+
+  /** Retour de la plateforme Chargeback (via le connecteur) : met à jour l'acheminement de l'événement. */
+  async onChargebackResult(p: { eventId: string; status: 'ACKED' | 'REJECTED' | 'FAILED'; actionCode?: string; detail?: string }, m = this.repo.manager) {
+    const ev = await m.findOne(DisputeEvent, { where: { id: p.eventId } });
+    if (!ev) throw new Error(`Événement ${p.eventId} inconnu`);
+    ev.deliveryStatus = p.status;
+    ev.actionCode = p.actionCode ?? null;
+    ev.deliveryDetail = p.detail?.slice(0, 300) ?? null;
+    await m.save(ev);
+    await this.audit.record({ actor: 'connecteur-chargeback', action: `dispute.message.${p.status.toLowerCase()}`, objectType: 'dispute', objectId: ev.disputeId, details: { eventId: ev.id, mti: ev.mti, actionCode: ev.actionCode } });
+  }
+
+  onModuleInit() {
+    void this.inbox.consume('backend.chargeback.result', [TOPICS.chargebackResult], (msg, m) => this.onChargebackResult(msg.payload as any, m));
   }
 
   private async record(

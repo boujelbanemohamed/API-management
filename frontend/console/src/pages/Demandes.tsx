@@ -3,7 +3,7 @@ import { ErrorBanner, Field, formatDate, Loading, PageHeader, Pill, Table, REQUE
 import { useCan, useMe } from '../session';
 import { askReason, useAction, useList } from '../common';
 
-interface Req { id: string; partnerId: string; type: string; subject: string; status: string; team: string; assignee: string | null; sensitive: boolean; preparedBy: string | null; openedOn: string; dueDate: string; sla: string }
+interface Req { id: string; partnerId: string; type: string; subject: string; status: string; team: string; assignee: string | null; sensitive: boolean; preparedBy: string | null; openedOn: string; dueDate: string; sla: string; routedTo: string | null; externalMessage: string | null }
 
 const TEAMS: Record<string, string> = { OPERATIONS: 'Opérations', INTEGRATION: 'Intégration', SECURITY: 'Sécurité', SUPPORT: 'Support' };
 
@@ -21,6 +21,7 @@ export function FileDemandes() {
 
   const actions = (r: Req) => {
     if (!can) return null;
+    if (r.routedTo) return <span className="kpi-label">Traitée par le Cockpit</span>;
     const b = (label: string, onClick: () => void, primary = false) => (
       <button key={label} className={`btn ${primary ? 'btn-primary' : 'btn-secondary'}`} onClick={onClick} disabled={act.isPending}>{label}</button>
     );
@@ -58,7 +59,7 @@ export function FileDemandes() {
           empty="Aucune demande."
           columns={[
             { header: 'Banque', cell: (r) => code(r.partnerId) },
-            { header: 'Objet', cell: (r) => <>{r.subject}{r.sensitive && <> <Pill label={{ text: 'Sensible', tone: 'warn' }} /></>}</> },
+            { header: 'Objet', cell: (r) => <>{r.subject}{r.sensitive && <> <Pill label={{ text: 'Sensible', tone: 'warn' }} /></>}{r.routedTo && <> <Pill label={{ text: 'Cockpit', tone: 'info' }} /></>}{r.externalMessage && <div className="kpi-label">{r.externalMessage}</div>}</> },
             { header: 'Type', cell: (r) => REQUEST_TYPE[r.type] },
             { header: 'Équipe', cell: (r) => TEAMS[r.team] ?? r.team },
             { header: 'Agent', cell: (r) => r.assignee ?? '—' },

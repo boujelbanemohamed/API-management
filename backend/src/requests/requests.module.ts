@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Inject, Injectable, Module, NotFoundException, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Injectable, Logger, Module, NotFoundException, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { IsBoolean, IsEnum, IsIn, IsInt, IsObject, IsOptional, IsString, IsUUID, Matches, MaxLength, Min } from 'class-validator';
@@ -13,7 +13,12 @@ import {
   dueDate,
   endSuspension,
   slaLevel,
+  isOpen,
+  routeOf,
 } from './request-rules';
+import { enqueue } from '../integration/outbox';
+import { TOPICS } from '../integration/message-bus';
+import { Inbox } from '../integration/integration.module';
 import { BusinessRuleError } from '../subscriptions/subscription-rules';
 import { WorkingCalendar } from '../common/working-days';
 import { CLOCK, Clock } from '../common/clock';
@@ -69,7 +74,10 @@ export class RequestsService {
     @InjectRepository(Partner) private readonly partners: Repository<Partner>,
     private readonly audit: AuditService,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly inbox: Inbox,
   ) {}
+
+  private readonly logger = new Logger('Demandes');
 
   async calendar(): Promise<WorkingCalendar> {
     return new WorkingCalendar((await this.holidays.find()).map((h) => h.date));
@@ -87,22 +95,81 @@ export class RequestsService {
         'Le numéro de carte complet est interdit : utilisez le format masqué (6 premiers et 4 derniers chiffres).',
       );
     }
+    const partner = await this.partners.findOneByOrFail({ id: dto.partnerId });
     const { team, slaDays } = await this.commitment(dto.type);
-    const req = await this.repo.save(
-      this.repo.create({
-        partnerId: dto.partnerId,
-        type: dto.type,
-        subject: dto.subject,
-        context: dto.context ?? null,
-        sensitive: dto.sensitive ?? false,
-        team,
-        slaDays,
-        openedOn: this.clock.today(),
-        status: RequestStatus.NEW,
-      }),
-    );
-    await this.log(actor, 'create', req, { type: req.type, team, slaDays });
+    const route = routeOf(dto.type, dto.context);
+    // Demande et ordre au Cockpit enregistrés ensemble (outbox). Le Cockpit est un système SMT : le délai court.
+    const req = await this.repo.manager.transaction(async (m) => {
+      const r = await m.save(
+        m.create(ServiceRequest, {
+          partnerId: dto.partnerId,
+          type: dto.type,
+          subject: dto.subject,
+          context: dto.context ?? null,
+          sensitive: dto.sensitive ?? false,
+          team,
+          slaDays,
+          openedOn: this.clock.today(),
+          status: route ? RequestStatus.IN_PROGRESS : RequestStatus.NEW,
+          assignee: route ? 'SMT Cockpit' : null,
+          routedTo: route,
+        }),
+      );
+      if (route === 'COCKPIT') {
+        await enqueue(m, TOPICS.cockpitOrder, { requestId: r.id, partnerCode: partner.code, service: dto.context!.service.toUpperCase(), subject: r.subject, context: r.context ?? {} });
+      }
+      return r;
+    });
+    await this.log(actor, 'create', req, { type: req.type, team, slaDays, routedTo: route });
     return req;
+  }
+
+  /** Retour du Cockpit (webhook vérifié par le connecteur). */
+  async onCockpitEvent(p: { requestId: string; status: 'DONE' | 'REJECTED' | 'NEED_INFO' | 'IN_PROGRESS' | 'TRANSMISSION_FAILED'; message?: string }, m = this.repo.manager) {
+    const r = await m.findOne(ServiceRequest, { where: { id: p.requestId } });
+    if (!r) throw new Error(`Demande ${p.requestId} inconnue`);
+    const from = r.status;
+    const today = this.clock.today();
+    const cal = await this.calendar();
+    if (r.routedTo !== 'COCKPIT' || !isOpen(r.status)) {
+      this.logger.warn(`Événement Cockpit ignoré pour la demande ${r.id} (état ${r.status})`);
+      return;
+    }
+    r.externalMessage = p.message?.slice(0, 300) ?? null;
+    const resume = () => {
+      if (r.suspendedSince) r.suspendedWorkingDays = endSuspension(r, cal, today);
+      r.suspendedSince = null;
+    };
+    if (p.status === 'DONE') {
+      resume();
+      if (r.sensitive) {
+        // Opération sensible : exécutée par le Cockpit, validée par un agent (double validation).
+        r.preparedBy = 'SMT Cockpit';
+        r.status = RequestStatus.AWAITING_VALIDATION;
+      } else {
+        r.status = RequestStatus.DONE;
+        r.doneOn = today;
+      }
+    } else if (p.status === 'REJECTED') {
+      resume();
+      r.status = RequestStatus.REJECTED;
+      r.rejectionReason = p.message?.slice(0, 300) ?? 'Rejetée par le Cockpit';
+      r.doneOn = today;
+    } else if (p.status === 'TRANSMISSION_FAILED') {
+      // Le Cockpit n'a pas pu recevoir l'ordre : la demande revient aux agents SMT, le délai continue de courir.
+      r.routedTo = null;
+      r.assignee = null;
+      r.status = RequestStatus.IN_PROGRESS;
+    } else if (p.status === 'NEED_INFO') {
+      r.status = RequestStatus.WAITING_BANK;
+      r.suspendedSince = today;
+    }
+    await m.save(r);
+    await this.audit.record({ actor: 'connecteur-cockpit', action: `request.cockpit.${p.status.toLowerCase()}`, objectType: 'request', objectId: r.id, details: { from, to: r.status } });
+  }
+
+  onModuleInit() {
+    void this.inbox.consume('backend.cockpit.event', [TOPICS.cockpitEvent], (msg, m) => this.onCockpitEvent(msg.payload as any, m));
   }
 
   async list(filter: { partnerId?: string; status?: RequestStatus; team?: string }) {

@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   api, post, Card, ErrorBanner, Field, formatAmount, formatDate, Loading, MASKED_PAN, PageHeader, Pill, Table, toMillimes,
-  DISPUTE_ACTION, DISPUTE_STAGE,
+  DISPUTE_ACTION, DISPUTE_STAGE, DELIVERY,
 } from '@smt/ui';
 import { useCan, useMe } from '../session';
 import type { Dispute } from '../types';
@@ -187,7 +187,7 @@ export function LitigeDetail() {
             {(d.events ?? []).map((ev) => (
               <li key={ev.id}>
                 <strong>{DISPUTE_ACTION[ev.action] ?? ev.action}</strong> — {formatDate(ev.occurredOn)} par {ev.actor}
-                {ev.mti && <> · message <span className="mono">{ev.mti}/{ev.functionCode}</span></>}
+                {ev.mti && <> · message <span className="mono">{ev.mti}/{ev.functionCode}</span> <Pill label={DELIVERY[ev.deliveryStatus ?? '']} /></>}
                 {ev.amount !== null && <> · {formatAmount(ev.amount)}</>}
               </li>
             ))}

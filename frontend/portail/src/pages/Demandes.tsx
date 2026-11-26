@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   api, post, Card, ErrorBanner, Field, formatDate, FULL_PAN, Loading, PageHeader, Pill, Table,
-  REQUEST_STATUS, REQUEST_TYPE, SLA,
+  REQUEST_STATUS, REQUEST_TYPE, SLA, OPERATION_SERVICE,
 } from '@smt/ui';
 import { useCan } from '../session';
 import type { ServiceRequest } from '../types';
@@ -55,6 +55,7 @@ export function DemandesListe() {
 
 const schema = z.object({
   type: z.enum(['OPERATION', 'API_ACCESS', 'IP_CERTIFICATE', 'SUPPORT']),
+  service: z.string(),
   subject: z.string().trim().min(5, 'Décrivez la demande en 5 caractères au moins').max(200),
   reference: z
     .string()
@@ -68,12 +69,18 @@ export function DemandeNouvelle() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { register, handleSubmit, formState } = useForm<Form>({
+  const { register, handleSubmit, formState, watch } = useForm<Form>({
     resolver: zodResolver(schema),
-    defaultValues: { type: (params.get('type') as Form['type']) ?? 'OPERATION', subject: '', reference: '' },
+    defaultValues: { type: (params.get('type') as Form['type']) ?? 'OPERATION', service: 'CARTE', subject: '', reference: '' },
   });
+  const isOperation = watch('type') === 'OPERATION';
   const create = useMutation({
-    mutationFn: (f: Form) => post<ServiceRequest>('/portal/requests', { type: f.type, subject: f.subject, ...(f.reference ? { context: { reference: f.reference } } : {}) }),
+    mutationFn: (f: Form) => {
+      const context: Record<string, string> = {};
+      if (f.type === 'OPERATION') context.service = f.service;
+      if (f.reference) context.reference = f.reference;
+      return post<ServiceRequest>('/portal/requests', { type: f.type, subject: f.subject, ...(Object.keys(context).length ? { context } : {}) });
+    },
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ['requests'] });
       navigate(`/demandes/${r.id}`);
@@ -91,6 +98,15 @@ export function DemandeNouvelle() {
             </select>
           )}
         </Field>
+        {isOperation && (
+          <Field label="Service concerné" hint="Les demandes GAB, TPE et affiliation sont transmises automatiquement au Cockpit SMT.">
+            {(p) => (
+              <select {...p} {...register('service')}>
+                {Object.entries(OPERATION_SERVICE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            )}
+          </Field>
+        )}
         <Field label="Objet" error={e.subject?.message}>{(p) => <input {...p} {...register('subject')} />}</Field>
         <Field label="Référence (facultatif)" hint="Carte masquée, numéro de GAB, de commerçant ou de service" error={e.reference?.message}>
           {(p) => <input {...p} {...register('reference')} />}
@@ -125,7 +141,8 @@ export function DemandeDetail() {
           <dt>Ouverte le</dt><dd>{formatDate(r.openedOn)}</dd>
           <dt>Échéance</dt><dd>{formatDate(r.dueDate)}</dd>
           <dt>Traitée le</dt><dd>{formatDate(r.doneOn)}</dd>
-          {r.context && Object.entries(r.context).map(([k, v]) => <div key={k} style={{ display: 'contents' }}><dt>{k === 'reference' ? 'Référence' : k}</dt><dd className="mono">{v}</dd></div>)}
+          {r.context && Object.entries(r.context).map(([k, v]) => <div key={k} style={{ display: 'contents' }}><dt>{k === 'reference' ? 'Référence' : k === 'service' ? 'Service' : k}</dt><dd className="mono">{k === 'service' ? (OPERATION_SERVICE[v] ?? v) : v}</dd></div>)}
+          {r.externalMessage && <><dt>Message de SMT</dt><dd>{r.externalMessage}</dd></>}
           {r.rejectionReason && <><dt>Motif du rejet</dt><dd>{r.rejectionReason}</dd></>}
         </dl>
       </Card>

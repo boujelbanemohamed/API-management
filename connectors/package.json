@@ -1,0 +1,24 @@
+{
+  "name": "api-platform-connectors",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Couche d'intégration : connecteurs fournisseurs (Chargeback ISO 8583, SMT Cockpit) et simulateurs de sandbox",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest run",
+    "start:chargeback": "node dist/chargeback/main.js",
+    "start:cockpit": "node dist/cockpit/main.js",
+    "sim:chargeback": "node dist/sim/chargeback-sim.js",
+    "sim:cockpit": "node dist/sim/cockpit-sim.js"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.9"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.8",
+    "@types/node": "^22.20.7",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.2"
+  }
+}

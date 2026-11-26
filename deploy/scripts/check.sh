@@ -6,7 +6,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT" || exit 1
 ENGINE="${ENGINE:-podman}"
-SERVICES=(postgres valkey etcd apisix keycloak seaweedfs clamav simulateur backend portail console)
+SERVICES=(postgres valkey etcd apisix keycloak seaweedfs clamav simulateur rabbitmq backend connector-cockpit sim-cockpit portail console)
 WAIT=false; [[ "${1:-}" == "--wait" ]] && WAIT=true
 DEADLINE=$(( $(date +%s) + 600 ))
 

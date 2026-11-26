@@ -1,0 +1,17 @@
+# Connecteurs et simulateurs : une image, le rôle est choisi par la commande du service (voir deploy/compose.yaml).
+FROM registry.access.redhat.com/ubi9/nodejs-22 AS build
+USER 0
+WORKDIR /app
+COPY package.json package-lock.json tsconfig.json ./
+RUN npm ci
+COPY src ./src
+RUN npm run build && npm prune --omit=dev
+
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal
+WORKDIR /app
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY package.json ./
+ENV NODE_ENV=production
+USER 1001
+CMD ["node", "dist/chargeback/main.js"]

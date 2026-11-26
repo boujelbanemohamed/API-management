@@ -79,6 +79,20 @@ services:
       timeout: 3s
       retries: 30
 
+  rabbitmq:
+    <<: *restart
+    image: docker.io/library/rabbitmq:4.0-management
+    environment:
+      RABBITMQ_DEFAULT_USER: apim
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD manquant}
+    volumes:
+      - rabbitdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
   keycloak:
     <<: *restart
     image: quay.io/keycloak/keycloak:26.0
@@ -150,6 +164,7 @@ services:
       postgres: { condition: service_healthy }
       valkey: { condition: service_healthy }
       apisix: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
     environment:
       PORT: 3000
       ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:?ADMIN_API_TOKEN manquant}
@@ -169,8 +184,64 @@ services:
       VALKEY_URL: redis://:${VALKEY_PASSWORD}@valkey:6379
       VALKEY_KEY_PREFIX: ${VALKEY_KEY_PREFIX:-apigw}
       ONBOARDING_ENFORCE: ${ONBOARDING_ENFORCE:-true}
+      AMQP_URL: amqp://apim:${RABBITMQ_PASSWORD}@rabbitmq:5672
       KEYCLOAK_ISSUER: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8081}/realms/smt
       KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/smt/protocol/openid-connect/certs
+
+  # --- Couche d'intégration (lot 4) : un connecteur par fournisseur, redémarré automatiquement en cas de coupure ---
+  connector-chargeback:
+    <<: *restart
+    build: ../connectors
+    image: localhost/api-platform/connectors:dev
+    command: ["node", "dist/chargeback/main.js"]
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+    environment:
+      AMQP_URL: amqp://apim:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      # Sandbox : simulateur. Production : adresse de la plateforme Chargeback.
+      CHARGEBACK_HOST: ${CHARGEBACK_HOST:-sim-chargeback}
+      CHARGEBACK_PORT: ${CHARGEBACK_PORT:-8583}
+
+  connector-cockpit:
+    <<: *restart
+    image: localhost/api-platform/connectors:dev
+    command: ["node", "dist/cockpit/main.js"]
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      connector-chargeback: { condition: service_started }
+    environment:
+      AMQP_URL: amqp://apim:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      COCKPIT_URL: ${COCKPIT_URL:-http://sim-cockpit:8091}
+      COCKPIT_SHARED_SECRET: ${COCKPIT_SHARED_SECRET:?COCKPIT_SHARED_SECRET manquant}
+      PORT: 8090
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8090/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  sim-chargeback:
+    <<: *restart
+    image: localhost/api-platform/connectors:dev
+    command: ["node", "dist/sim/chargeback-sim.js"]
+    depends_on: [connector-chargeback]
+    environment:
+      PORT: 8583
+
+  sim-cockpit:
+    <<: *restart
+    image: localhost/api-platform/connectors:dev
+    command: ["node", "dist/sim/cockpit-sim.js"]
+    depends_on: [connector-chargeback]
+    environment:
+      PORT: 8091
+      COCKPIT_SHARED_SECRET: ${COCKPIT_SHARED_SECRET}
+      WEBHOOK_URL: http://connector-cockpit:8090/webhooks/cockpit
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8091/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
 
   portail:
     <<: *restart
@@ -211,6 +282,7 @@ services:
       - "127.0.0.1:${CONSOLE_PORT:-5173}:8080"
 
 volumes:
+  rabbitdata:
   pgdata:
   valkeydata:
   etcddata:

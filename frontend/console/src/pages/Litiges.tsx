@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api, Card, ErrorBanner, Field, formatAmount, formatDate, Loading, PageHeader, Pill, Table, toMillimes, DISPUTE_ACTION, DISPUTE_STAGE } from '@smt/ui';
+import { api, Card, ErrorBanner, Field, formatAmount, formatDate, Loading, PageHeader, Pill, Table, toMillimes, DISPUTE_ACTION, DISPUTE_STAGE, DELIVERY } from '@smt/ui';
 import { useHasRole } from '../session';
 import { useAction, useList } from '../common';
 
-interface Dispute { id: string; issuerId: string; acquirerId: string; transactionRef: string; maskedPan: string; transactionDate: string; transactionAmount: number; disputedAmount: number | null; reasonCode: string; stage: string; deadline: string | null; winner: string | null; arbitrationFees: number | null; events?: { id: string; action: string; party: string; actor: string; occurredOn: string; mti: string | null; functionCode: string | null }[] }
+interface Dispute { id: string; issuerId: string; acquirerId: string; transactionRef: string; maskedPan: string; transactionDate: string; transactionAmount: number; disputedAmount: number | null; reasonCode: string; stage: string; deadline: string | null; winner: string | null; arbitrationFees: number | null; events?: { id: string; action: string; party: string; actor: string; occurredOn: string; mti: string | null; functionCode: string | null; deliveryStatus: string | null; actionCode: string | null; deliveryDetail: string | null }[] }
 
 function usePartnerCode() {
   const partners = useList<{ id: string; code: string }>('partners', '/partners');
@@ -74,7 +74,7 @@ export function LitigeConsoleDetail() {
       <Card title="Historique et messages ISO">
         <ol className="timeline">
           {(d.events ?? []).map((ev) => (
-            <li key={ev.id}><strong>{DISPUTE_ACTION[ev.action] ?? ev.action}</strong> — {formatDate(ev.occurredOn)} · {ev.actor}{ev.mti && <> · <span className="mono">{ev.mti}/{ev.functionCode}</span></>}</li>
+            <li key={ev.id}><strong>{DISPUTE_ACTION[ev.action] ?? ev.action}</strong> — {formatDate(ev.occurredOn)} · {ev.actor}{ev.mti && <> · <span className="mono">{ev.mti}/{ev.functionCode}</span> <Pill label={DELIVERY[ev.deliveryStatus ?? '']} />{ev.actionCode && <span className="mono"> code {ev.actionCode}</span>}{ev.deliveryDetail && <span className="kpi-label"> — {ev.deliveryDetail}</span>}</>}</li>
           ))}
         </ol>
       </Card>

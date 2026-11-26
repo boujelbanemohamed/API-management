@@ -57,6 +57,14 @@ export class ServiceRequest {
   @Column({ type: 'varchar', length: 300, nullable: true })
   rejectionReason: string | null;
 
+  /** Système qui traite la demande (COCKPIT) quand elle est acheminée automatiquement. */
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  routedTo: string | null;
+
+  /** Dernier message du système traitant (ex. information demandée par le Cockpit). */
+  @Column({ type: 'varchar', length: 300, nullable: true })
+  externalMessage: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -22,6 +22,11 @@ export interface AppConfig {
     /** Environnement servi par cette passerelle : une instance APISIX par environnement. */
     environment: 'SANDBOX' | 'PRODUCTION';
   };
+  /** Couche d'intégration : RabbitMQ (vide = bus en mémoire, réservé aux tests et au poste de développement). */
+  integration?: {
+    amqpUrl: string;
+    relayIntervalMs: number;
+  };
   keycloak: {
     /** Émetteur attendu dans les jetons (adresse publique du royaume). */
     issuerUrl: string;
@@ -71,6 +76,10 @@ export function loadConfig(): AppConfig {
       adminKey: required('APISIX_ADMIN_KEY'),
       usageCallbackUrl: required('USAGE_CALLBACK_URL', 'http://backend:3000/internal/usage'),
       environment: process.env.GATEWAY_ENVIRONMENT === 'SANDBOX' ? 'SANDBOX' : 'PRODUCTION',
+    },
+    integration: {
+      amqpUrl: process.env.AMQP_URL ?? '',
+      relayIntervalMs: Number(process.env.OUTBOX_RELAY_MS ?? 1000),
     },
     keycloak: {
       issuerUrl: required('KEYCLOAK_ISSUER', 'http://localhost:8081/realms/smt'),
