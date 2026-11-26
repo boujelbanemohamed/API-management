@@ -21,6 +21,7 @@ import { BankContext, OnlyRoles, PortalArea, PortalGuard } from '../auth/guards'
 import { BankRole, visiblePortalSections } from '../auth/roles';
 import { Partner } from '../partners/partner.entity';
 import { ApiProduct, ApiStatus } from '../apis/api-product.entity';
+import { Plan } from '../plans/plan.entity';
 import { RequestsModule, RequestsService } from '../requests/requests.module';
 import { RequestStatus, RequestType } from '../requests/request-rules';
 import { DisputesModule, DisputesService } from '../disputes/disputes.module';
@@ -82,6 +83,7 @@ export class PortalController {
   constructor(
     @InjectRepository(Partner) private readonly partners: Repository<Partner>,
     @InjectRepository(ApiProduct) private readonly apis: Repository<ApiProduct>,
+    @InjectRepository(Plan) private readonly plans: Repository<Plan>,
     private readonly requests: RequestsService,
     private readonly disputes: DisputesService,
     private readonly onboardings: OnboardingService,
@@ -96,7 +98,7 @@ export class PortalController {
     const partner = await this.partners.findOneOrFail({ where: { id: bank.partnerId } });
     return {
       username: bank.username,
-      partner: { code: partner.code, name: partner.name, status: partner.status },
+      partner: { id: partner.id, code: partner.code, name: partner.name, status: partner.status },
       roles: bank.roles.filter((r) => r.startsWith('banque-')),
       sections: visiblePortalSections(bank.roles),
     };
@@ -112,6 +114,14 @@ export class PortalController {
     return items.map(({ id, name, slug, version, description, publicPath, status, securityLevel, billingUnit }) => ({
       id, name, slug, version, description, publicPath, status, securityLevel, billingUnit,
     }));
+  }
+
+  /** Plans proposés à la souscription (sans réglages internes). */
+  @Get('plans')
+  @PortalArea('developpeurs')
+  async plansList() {
+    const items = await this.plans.find({ where: { active: true }, order: { name: 'ASC' } });
+    return items.map(({ id, name, dailyQuota, monthlyQuota, rateLimitPerSecond }) => ({ id, name, dailyQuota, monthlyQuota, rateLimitPerSecond }));
   }
 
   @Get('subscriptions')
@@ -251,7 +261,7 @@ export class PortalController {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Partner, ApiProduct]),
+    TypeOrmModule.forFeature([Partner, ApiProduct, Plan]),
     RequestsModule,
     DisputesModule,
     OnboardingModule,

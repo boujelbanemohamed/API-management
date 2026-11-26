@@ -1,0 +1,22 @@
+# Une image par application : --build-arg APP=portail ou APP=console.
+# Construction depuis frontend/ : podman build -f deploy/Containerfile --build-arg APP=portail -t api-platform/portail:dev .
+FROM registry.access.redhat.com/ubi9/nodejs-22 AS build
+ARG APP
+USER 0
+WORKDIR /app
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY ui/package.json ui/
+COPY portail/package.json portail/
+COPY console/package.json console/
+RUN npm ci --ignore-scripts
+COPY ui ui
+COPY ${APP} ${APP}
+RUN npm run build -w ${APP} && mv ${APP}/dist /dist
+
+FROM registry.access.redhat.com/ubi9/nginx-124
+COPY --from=build /dist /opt/app-root/src
+COPY deploy/nginx-app.conf /opt/app-root/etc/nginx.default.d/app.conf
+# Configuration lue par le navigateur, écrite au démarrage : la même image sert tous les environnements.
+ENV KEYCLOAK_PUBLIC_URL=http://localhost:8081 KEYCLOAK_REALM=smt
+USER 1001
+CMD ["/bin/sh", "-c", "printf '{\"keycloakUrl\":\"%s\",\"realm\":\"%s\",\"apiUrl\":\"/api\"}' \"$KEYCLOAK_PUBLIC_URL\" \"$KEYCLOAK_REALM\" > /opt/app-root/src/config.json && exec nginx -g 'daemon off;'"]

@@ -1,0 +1,13 @@
+{
+  "name": "portail",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p . && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": { "@smt/ui": "0.1.0" }
+}

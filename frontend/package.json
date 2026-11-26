@@ -1,0 +1,43 @@
+{
+  "name": "api-platform-frontend",
+  "private": true,
+  "workspaces": [
+    "ui",
+    "portail",
+    "console"
+  ],
+  "scripts": {
+    "dev:portail": "npm run dev -w portail",
+    "dev:console": "npm run dev -w console",
+    "build": "npm run build -w portail && npm run build -w console",
+    "test": "npm run test -w ui -w portail -w console",
+    "typecheck": "tsc -p portail && tsc -p console"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/space-grotesk": "^5.3.0",
+    "@hookform/resolvers": "^3.10.0",
+    "@tanstack/react-query": "^5.108.4",
+    "keycloak-js": "^26.2.5",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-hook-form": "^7.92.0",
+    "react-router-dom": "^7.18.7",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@testing-library/jest-dom": "^8.0.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.13",
+    "@types/node": "^22.20.7",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "jsdom": "^31.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.4.0",
+    "vitest": "^5.1.2"
+  },
+  "type": "module"
+}

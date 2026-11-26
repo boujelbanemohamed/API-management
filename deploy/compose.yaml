@@ -172,6 +172,44 @@ services:
       KEYCLOAK_ISSUER: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8081}/realms/smt
       KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/smt/protocol/openid-connect/certs
 
+  portail:
+    <<: *restart
+    build:
+      context: ../frontend
+      dockerfile: deploy/Containerfile
+      args: { APP: portail }
+    image: localhost/api-platform/portail:dev
+    depends_on: [backend]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8080/config.json"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    environment:
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8081}
+    ports:
+      # Portail des banques (derrière le répartiteur et le pare-feu applicatif en production).
+      - "${PORTAIL_PORT:-5174}:8080"
+
+  console:
+    <<: *restart
+    build:
+      context: ../frontend
+      dockerfile: deploy/Containerfile
+      args: { APP: console }
+    image: localhost/api-platform/console:dev
+    depends_on: [backend]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8080/config.json"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    environment:
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8081}
+    ports:
+      # Console SMT : réseau interne uniquement.
+      - "127.0.0.1:${CONSOLE_PORT:-5173}:8080"
+
 volumes:
   pgdata:
   valkeydata:

@@ -58,7 +58,8 @@ export type PortalSection = keyof typeof PORTAL_SECTIONS;
 
 /** Rôles qui peuvent seulement lire dans une section (GET). */
 const CONSOLE_READERS: Partial<Record<ConsoleSection, ConsoleRole[]>> = {
-  banques: [...AGENTS, ConsoleRole.FACTURATION],
+  // L'arbitre lit les banques pour identifier les parties d'un litige.
+  banques: [...AGENTS, ConsoleRole.FACTURATION, ConsoleRole.ARBITRE],
   catalogue: [...AGENTS],
   finance: [ConsoleRole.AGENT_INTEGRATION],
 };

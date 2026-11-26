@@ -36,6 +36,8 @@ Arrêt : `podman compose --env-file .env -f deploy/compose.yaml down` (ajouter `
 | seaweedfs | Fichiers : pièces, PV, bibliothèque (API S3) | 8333 |
 | clamav | Antivirus des pièces déposées | — |
 | simulateur | Faux fournisseur derrière la sandbox | 8080 |
+| portail | Portail des banques (React, servi par nginx) | 5174 (exposé) |
+| console | Console SMT (React, servi par nginx) | 5173 (127.0.0.1 seulement) |
 
 Sans `--dev`, seul le port de la passerelle est exposé.
 
@@ -53,6 +55,27 @@ gateway/apisix/     plugins Lua de la passerelle (subscription-guard)
 deploy/             compose, configuration APISIX, royaume Keycloak, scripts
 CLAUDE.md           contexte du projet : contraintes, architecture, conventions, avancement
 ```
+
+## Front-end (lot 3)
+
+`frontend/` contient deux applications React (Vite, TypeScript) et une bibliothèque commune :
+
+- `ui/` : charte des maquettes (polices auto-hébergées), composants, client HTTP, connexion Keycloak, libellés français ;
+- `portail/` : accueil, demandes, litiges, mises en service, catalogue, consommation et abonnements ;
+- `console/` : tableau de bord, file des demandes (double validation), litiges et arbitrage, mises en service, partenaires, abonnements, catalogue, plans, fournisseurs, facturation, engagements et jours fériés, journal d'audit.
+
+Le menu reprend la structure validée. Les écrans prévus dans un lot ultérieur (opérations, bibliothèque, assistant IA…) sont affichés avec la mention « Bientôt ». Le navigateur appelle `/api`, relayé vers le back-end : même origine, pas de CORS. L'adresse de Keycloak est lue au démarrage dans `/config.json` ; une même image sert tous les environnements.
+
+```bash
+cd frontend && npm ci
+npm run dev:portail      # http://localhost:5174 (back-end attendu sur :3000, Keycloak sur :8081)
+npm run dev:console      # http://localhost:5173
+npm test                 # tests unitaires
+# Parcours dans un vrai navigateur, contre le vrai back-end et le vrai Keycloak :
+ADMIN_API_TOKEN=… KEYCLOAK_ADMIN_PASSWORD=… npx playwright test
+```
+
+Les parcours Playwright créent leurs propres données et utilisateurs de recette (`e2e/seed.ts`).
 
 ## Sécurité (lot 2)
 

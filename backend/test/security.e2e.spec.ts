@@ -198,6 +198,8 @@ describe('Lot 2 — sécurité : rôles de la console et cloisonnement du portai
 
     it('développeurs : catalogue sans fournisseur ; mise en service à son nom ; PV signé par l’admin sécurité seul', async () => {
       const dev = await portal('dev', 'BNA', 'banque-developpeur');
+      const plans = await http.get('/portal/plans').set(dev).expect(200);
+      expect(plans.body[0]).toEqual({ id: ids.plan, name: 'Std', dailyQuota: 10, monthlyQuota: null, rateLimitPerSecond: 5 });
       const cat = await http.get('/portal/catalogue').set(dev).expect(200);
       expect(cat.body[0]).toMatchObject({ slug: 'cartes-v1', publicPath: '/cartes/v1' });
       expect(cat.body[0].providerId).toBeUndefined();

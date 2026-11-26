@@ -37,6 +37,7 @@ Portail React → back-end NestJS (métier + BFF du portail) → APISIX → four
   - portal (BFF du portail : la banque vient toujours du jeton, la ressource d'une autre banque répond 404).
 - Règles métier en fonctions pures : `*-rules.ts`. Calendrier tunisien : `common/working-days.ts`.
 - `gateway/apisix/plugins/` : plugins Lua.
+- `frontend/` : npm workspaces `ui` (charte, composants, client HTTP, Keycloak), `portail`, `console` ; parcours `e2e/` (Playwright, `CHROME_PATH` pour un Chrome local). Les droits d'écriture côté écran (`session.tsx`) reprennent `backend/src/auth/roles.ts` : les garder alignés.
 
 ## Conventions
 - Code et commentaires en français. Dates métier au format `AAAA-MM-JJ`, heure de Tunis, avec une horloge injectable (`FixedClock` dans les tests).
@@ -62,6 +63,6 @@ https://github.com/boujelbanemohamed/API-management, branche `main`. Pousser seu
 | 0 | Back-end métier (partners → disputes) | Fait, 51 tests verts, poussé le 2026-11-23 |
 | 1 | Socle exécutable : compose Podman, configuration APISIX, `.env`, README | Poussé. QA du 2026-11-23 sur services réels (PostgreSQL 16, Valkey, etcd, Keycloak 26, SeaweedFS, simulateur) : OK. Reste à valider sur Podman : APISIX et le parcours `deploy/scripts/qa-lot1.sh` |
 | 2 | Sécurité : Keycloak, BFF, cloisonnement par banque | Fait et poussé le 2026-11-23 : 65 tests ; QA sur un vrai Keycloak 26 (jetons réels, deux banques) |
-| 3 | Front React : console puis portail | À faire |
+| 3 | Front React : portail et console | Fait et poussé le 2026-11-26 : 12 parcours Playwright sur vrai back-end + Keycloak, tests unitaires ; écrans des lots 4-5 marqués « Bientôt » |
 | 4 | Couche d'intégration : RabbitMQ, schéma outbox, un connecteur par fournisseur (SVIP, Cockpit, Chargeback ISO 8583 avec une bibliothèque Apache ou MIT, jamais jPOS qui est AGPL), simulateurs | À faire (contrats d'API à fournir) |
 | 5 | Fichiers et antivirus, notifications, contenus, facturation globale, assistant IA | À faire |
