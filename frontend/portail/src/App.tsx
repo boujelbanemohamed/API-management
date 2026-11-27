@@ -9,10 +9,10 @@ import { Catalogue } from './pages/Catalogue';
 import { Consommation } from './pages/Consommation';
 import { Bibliotheque, ContenuDetail } from './pages/Contenus';
 import { GestionAcces } from './pages/Acces';
+import { Identifiants, Sandbox } from './pages/Developpeurs';
+import { Assistant } from './pages/Assistant';
 import { AccesSmartVista, Affiliation, Commercants, Gab, ServicesCartes, Transactions } from './pages/Operations';
 
-const LOT4 = 'Disponible au lot 5';
-const LOT5 = 'Disponible au lot 5';
 
 /** Menu du portail (structure validée sur les maquettes), filtré selon les sections autorisées. */
 function menu(sections: string[], roles: string[]): NavGroup[] {
@@ -40,13 +40,13 @@ function menu(sections: string[], roles: string[]): NavGroup[] {
       items: [
         { label: 'Catalogue', to: '/catalogue' },
         { label: 'Mises en service', to: '/mises-en-service' },
-        { label: 'Identifiants', soon: LOT5 },
-        { label: 'Sandbox', soon: LOT4 },
+        { label: 'Identifiants', to: '/developpeurs/identifiants' },
+        { label: 'Sandbox', to: '/developpeurs/sandbox' },
       ],
     },
     {
       label: 'Ressources',
-      items: [{ label: 'Bibliothèque', to: '/bibliotheque' }, { label: 'Assistant IA', soon: LOT5 }, has('demandes') ? { label: 'Support', to: '/demandes/nouvelle?type=SUPPORT' } : { label: 'Support', soon: LOT5 }],
+      items: [{ label: 'Bibliothèque', to: '/bibliotheque' }, { label: 'Assistant IA', to: '/assistant' }, ...(has('demandes') ? [{ label: 'Support', to: '/demandes/nouvelle?type=SUPPORT' }] : [])],
     },
     has('compte') && {
       label: 'Compte',
@@ -92,11 +92,14 @@ export function App() {
             <Route path="catalogue" element={<Catalogue />} />
             <Route path="mises-en-service" element={<MisesEnServiceListe />} />
             <Route path="mises-en-service/:id" element={<MiseEnServiceDetail />} />
+            <Route path="developpeurs/identifiants" element={<Identifiants />} />
+            <Route path="developpeurs/sandbox" element={<Sandbox />} />
           </>
         )}
         {has('compte') && <Route path="compte/consommation" element={<Consommation />} />}
         {me.roles.includes('banque-admin-securite') && <Route path="compte/acces" element={<GestionAcces />} />}
         <Route path="bibliotheque" element={<Bibliotheque />} />
+        <Route path="assistant" element={<Assistant />} />
         <Route path="contenus/:id" element={<ContenuDetail />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

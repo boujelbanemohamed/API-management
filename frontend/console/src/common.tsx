@@ -23,5 +23,5 @@ export function askReason(question: string): string | null {
 
 export interface PartnerRow { id: string; code: string; name: string; status: string; type: string }
 export interface ApiRow { id: string; name: string; slug: string; version: string; publicPath: string; upstreamPath: string; status: string; providerId: string }
-export interface PlanRow { id: string; name: string; dailyQuota: number; rateLimitPerSecond: number; approval: string; active: boolean }
+export interface PlanRow { id: string; name: string; dailyQuota: number; rateLimitPerSecond: number; approval: string; active: boolean; monthlyFee?: number; pricePerCall?: number }
 export interface ProviderRow { id: string; name: string; kind: string; baseUrl: string; sandboxBaseUrl: string | null }

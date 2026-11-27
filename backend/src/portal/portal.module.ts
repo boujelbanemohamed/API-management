@@ -29,6 +29,8 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { UsageModule } from '../usage/usage.module';
 import { UsageService } from '../usage/usage.service';
+import { PartnersModule } from '../partners/partners.module';
+import { PartnersService } from '../partners/partners.service';
 import { isIsoDate } from '../common/dates';
 
 export { Bank } from './bank.decorator';
@@ -87,6 +89,7 @@ export class PortalController {
     private readonly onboardings: OnboardingService,
     private readonly subscriptions: SubscriptionsService,
     private readonly usage: UsageService,
+    private readonly partnersService: PartnersService,
   ) {}
 
   // --- Profil et menu ---
@@ -170,6 +173,37 @@ export class PortalController {
   async onboardingSign(@Bank() bank: BankContext, @Param('id') id: string) {
     await this.onboardingGet(bank, id);
     return this.onboardings.sign(id, 'BANK', bank.actor);
+  }
+
+  // --- Identifiants et sandbox ---
+
+  /** Adresses de la passerelle, abonnements par environnement, date de la clé en cours (jamais la clé). */
+  @Get('credentials')
+  @PortalArea('developpeurs')
+  async credentials(@Bank() bank: BankContext) {
+    const partner = await this.partners.findOneOrFail({ where: { id: bank.partnerId } });
+    const [subs, apis] = await Promise.all([this.subscriptions.list({ partnerId: bank.partnerId }), this.apis.find()]);
+    const view = (env: string) =>
+      subs.filter((s) => s.environment === env).map((s) => {
+        const a = apis.find((x) => x.id === s.apiId);
+        return { id: s.id, api: a?.name ?? '?', path: a?.publicPath ?? '', status: s.status, startDate: s.startDate, endDate: s.endDate };
+      });
+    return {
+      apiKeyCreatedAt: partner.apiKeyCreatedAt,
+      apiKeyFingerprint: partner.apiKeyHash ? partner.apiKeyHash.slice(0, 12) : null,
+      gateways: { sandbox: process.env.PUBLIC_SANDBOX_URL ?? 'https://sandbox-api.smt.tn', production: process.env.PUBLIC_GATEWAY_URL ?? 'https://api.smt.tn' },
+      sandbox: view('SANDBOX'),
+      production: view('PRODUCTION'),
+    };
+  }
+
+  /** Nouvelle clé d'API : affichée une seule fois ; l'ancienne cesse de fonctionner. */
+  @Post('credentials/api-key')
+  @HttpCode(200)
+  @OnlyRoles(BankRole.ADMIN_SECURITE, BankRole.DEVELOPPEUR)
+  @PortalArea('developpeurs')
+  rotateKey(@Bank() bank: BankContext) {
+    return this.partnersService.issueApiKey(bank.partnerId, bank.actor);
   }
 
   // --- Demandes ---
@@ -265,6 +299,7 @@ export class PortalController {
     OnboardingModule,
     SubscriptionsModule,
     UsageModule,
+    PartnersModule,
   ],
   controllers: [PortalController],
 })

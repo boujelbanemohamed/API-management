@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ErrorBanner, Field, Loading, PageHeader, Pill, Table } from '@smt/ui';
+import { ErrorBanner, Field, formatAmount, Loading, PageHeader, Pill, Table, toMillimes } from '@smt/ui';
 import { useCan } from '../session';
 import { ApiRow, PlanRow, ProviderRow, useAction, useList } from '../common';
 
@@ -52,16 +52,18 @@ export function Plans() {
   const can = useCan('catalogue');
   const q = useList<PlanRow>('plans', '/plans');
   const act = useAction(['plans']);
-  const [f, setF] = useState({ name: '', dailyQuota: '1000', rateLimitPerSecond: '10' });
+  const [f, setF] = useState({ name: '', dailyQuota: '1000', rateLimitPerSecond: '10', monthlyFee: '0', pricePerCall: '0' });
   return (
     <div className="stack">
       <PageHeader title="Plans" subtitle="Quotas journaliers et débit maximal appliqués par la passerelle" />
       <ErrorBanner error={q.error ?? act.error} />
       {can && (
-        <form className="card row" onSubmit={(e) => { e.preventDefault(); act.mutate({ path: '/plans', body: { name: f.name, dailyQuota: Number(f.dailyQuota), rateLimitPerSecond: Number(f.rateLimitPerSecond) } }); }}>
+        <form className="card row" onSubmit={(e) => { e.preventDefault(); act.mutate({ path: '/plans', body: { name: f.name, dailyQuota: Number(f.dailyQuota), rateLimitPerSecond: Number(f.rateLimitPerSecond), monthlyFee: toMillimes(f.monthlyFee), pricePerCall: toMillimes(f.pricePerCall) } }); }}>
           <Field label="Nom">{(p) => <input {...p} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />}</Field>
           <Field label="Quota par jour">{(p) => <input {...p} type="number" min={1} value={f.dailyQuota} onChange={(e) => setF({ ...f, dailyQuota: e.target.value })} required />}</Field>
           <Field label="Débit (requêtes/s)">{(p) => <input {...p} type="number" min={1} value={f.rateLimitPerSecond} onChange={(e) => setF({ ...f, rateLimitPerSecond: e.target.value })} required />}</Field>
+          <Field label="Abonnement mensuel (TND)">{(p) => <input {...p} inputMode="decimal" value={f.monthlyFee} onChange={(e) => setF({ ...f, monthlyFee: e.target.value })} />}</Field>
+          <Field label="Prix par appel facturable (TND)">{(p) => <input {...p} inputMode="decimal" value={f.pricePerCall} onChange={(e) => setF({ ...f, pricePerCall: e.target.value })} />}</Field>
           <button className="btn btn-primary" type="submit">Créer le plan</button>
         </form>
       )}
@@ -71,6 +73,7 @@ export function Plans() {
             { header: 'Plan', cell: (p) => <strong>{p.name}</strong> },
             { header: 'Quota par jour', cell: (p) => p.dailyQuota.toLocaleString('fr-FR') },
             { header: 'Débit', cell: (p) => `${p.rateLimitPerSecond} req/s` },
+            { header: 'Tarif', cell: (p) => `${formatAmount(p.monthlyFee ?? 0)} / mois + ${formatAmount(p.pricePerCall ?? 0)} / appel` },
             { header: 'Validation', cell: (p) => (p.approval === 'AUTO' ? 'Automatique' : 'Manuelle') },
             { header: 'Actif', cell: (p) => (p.active ? 'Oui' : 'Non') },
           ]} />

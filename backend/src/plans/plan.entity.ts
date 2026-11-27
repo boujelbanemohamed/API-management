@@ -39,6 +39,14 @@ export class Plan {
   @Column({ type: 'boolean', default: true })
   active: boolean;
 
+  /** Tarif (millimes) : abonnement mensuel par service souscrit en production. */
+  @Column({ type: 'int', default: 0 })
+  monthlyFee: number;
+
+  /** Tarif (millimes) : prix par appel facturable. */
+  @Column({ type: 'int', default: 0 })
+  pricePerCall: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -11,8 +11,9 @@ import { Facturation } from './pages/Finance';
 import { Engagements, JournalAudit } from './pages/Administration';
 import { Contenus } from './pages/Contenus';
 import { Utilisateurs } from './pages/Utilisateurs';
+import { Supervision } from './pages/Supervision';
+import { CahiersTests } from './pages/CahiersTests';
 
-const LOT5 = 'Disponible au lot 5';
 
 /** Menu de la console (structure validée), filtré selon les sections autorisées. */
 function menu(sections: string[]): NavGroup[] {
@@ -33,13 +34,14 @@ function menu(sections: string[]): NavGroup[] {
       has('catalogue') && { label: 'API et produits', to: '/apis' },
       has('catalogue') && { label: 'Plans', to: '/plans' },
       has('catalogue') && { label: 'Fournisseurs', to: '/fournisseurs' },
-      has('catalogue') && { label: 'Cahiers de tests', soon: LOT5 },
+      has('catalogue') && { label: 'Cahiers de tests', to: '/cahiers-tests' },
     ]),
     g('Contenus', [has('administration') && { label: 'Communiqués, événements, enquêtes, bibliothèque', to: '/contenus' }]),
-    g('Finance', [has('finance') && { label: 'Facturation', to: '/facturation' }, has('finance') && { label: 'Rapprochement', soon: LOT5 }]),
+    g('Finance', [has('finance') && { label: 'Facturation et rapprochement', to: '/facturation' }]),
     g('Administration', [
       has('administration') && { label: 'Utilisateurs', to: '/utilisateurs' },
       has('administration') && { label: 'Engagements', to: '/engagements' },
+      has('administration') && { label: 'Paramètres et supervision', to: '/supervision' },
       has('administration') && { label: 'Journal d’audit', to: '/audit' },
     ]),
   ].filter(Boolean) as NavGroup[];
@@ -56,9 +58,9 @@ export function App() {
         {has('litiges') && <><Route path="litiges" element={<LitigesConsole />} /><Route path="litiges/:id" element={<LitigeConsoleDetail />} /></>}
         {has('mises-en-service') && <><Route path="mises-en-service" element={<MisesEnServiceConsole />} /><Route path="mises-en-service/:id" element={<MiseEnServiceConsoleDetail />} /></>}
         {has('banques') && <><Route path="partenaires" element={<Partenaires />} /><Route path="abonnements" element={<Abonnements />} /></>}
-        {has('catalogue') && <><Route path="apis" element={<ApiProduits />} /><Route path="plans" element={<Plans />} /><Route path="fournisseurs" element={<Fournisseurs />} /></>}
+        {has('catalogue') && <><Route path="apis" element={<ApiProduits />} /><Route path="plans" element={<Plans />} /><Route path="fournisseurs" element={<Fournisseurs />} /><Route path="cahiers-tests" element={<CahiersTests />} /></>}
         {has('finance') && <Route path="facturation" element={<Facturation />} />}
-        {has('administration') && <><Route path="engagements" element={<Engagements />} /><Route path="audit" element={<JournalAudit />} /><Route path="contenus" element={<Contenus />} /><Route path="utilisateurs" element={<Utilisateurs />} /></>}
+        {has('administration') && <><Route path="engagements" element={<Engagements />} /><Route path="audit" element={<JournalAudit />} /><Route path="contenus" element={<Contenus />} /><Route path="utilisateurs" element={<Utilisateurs />} /><Route path="supervision" element={<Supervision />} /></>}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

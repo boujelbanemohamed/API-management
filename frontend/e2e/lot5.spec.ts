@@ -77,6 +77,31 @@ test('menu : gestion des accès réservée à l’administrateur sécurité', as
   await expect(page.getByRole('navigation', { name: 'Menu du portail' }).getByRole('link', { name: 'Gestion des accès' })).toHaveCount(0);
 });
 
+test('identifiants et sandbox : accès visibles, jamais la clé', async ({ page }) => {
+  await portal(page, USERS.dev.username, '/developpeurs/sandbox');
+  await expect(page.getByText('jamais sur un vrai fournisseur')).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Accès sandbox' })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Menu du portail' }).getByRole('link', { name: 'Identifiants' }).click();
+  await expect(page.getByText('Clé en service')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Générer la clé|Renouveler la clé/ })).toBeVisible();
+  expect(await page.locator('main').innerText()).not.toMatch(/ak_[a-z]+_/);
+});
+
+test('assistant : réponse sourcée ; numéro de carte bloqué avant envoi', async ({ page }) => {
+  await portal(page, USERS.lit.username, '/assistant');
+  await page.getByLabel('Votre question').fill('Carte 4123456789012345 : que faire ?');
+  await expect(page.getByText('Retirez le numéro de carte de votre question.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Poser la question' })).toBeDisabled();
+  await page.getByLabel('Votre question').fill(`Où trouver le guide des litiges ${seed().run} ?`);
+  await page.getByRole('button', { name: 'Poser la question' }).click();
+  await expect(page.getByRole('region', { name: 'Réponse' })).toContainText(seed().doc);
+});
+
+test('menu du portail : plus aucun écran « Bientôt »', async ({ page }) => {
+  await portal(page, USERS.rssi.username);
+  await expect(page.getByRole('navigation', { name: 'Menu du portail' }).getByText('Bientôt')).toHaveCount(0);
+});
+
 test.describe('console', () => {
   test.use({ baseURL: 'http://localhost:5173' });
   const consoleLogin = (page: Page, user: string, path = '/') => login(page, user, path, 'Menu de la console');
@@ -97,6 +122,37 @@ test.describe('console', () => {
     await expect(page.getByText('Portail clair')).toBeVisible();
     await page.getByRole('navigation', { name: 'Menu de la console' }).getByRole('link', { name: 'Utilisateurs' }).click();
     await expect(page.getByRole('table', { name: 'Utilisateurs SMT' })).toContainText(USERS.ops1.username);
+  });
+
+  test('facturation : paiement enregistré puis à rapprocher ; plan tarifé', async ({ page }) => {
+    await consoleLogin(page, USERS.admin.username, '/plans');
+    await page.getByLabel('Nom').fill(`Tarifé ${seed().run}`);
+    await page.getByLabel('Abonnement mensuel (TND)').fill('150');
+    await page.getByLabel('Prix par appel facturable (TND)').fill('0,010');
+    await page.getByRole('button', { name: 'Créer le plan' }).click();
+    await expect(page.getByRole('row', { name: new RegExp(`Tarifé ${seed().run}`) })).toContainText('150,000 TND / mois + 0,010 TND / appel');
+    await page.getByRole('navigation', { name: 'Menu de la console' }).getByRole('link', { name: 'Facturation et rapprochement' }).click();
+    await page.getByRole('button', { name: 'Émettre les relevés du mois' }).click();
+    await expect(page.getByRole('status')).toContainText('relevé(s) émis');
+    await page.getByLabel('Banque', { exact: true }).selectOption({ label: 'BNA' });
+    await page.getByLabel('Montant (TND)').fill('100');
+    await page.getByLabel('Référence du virement').fill(`VIR-${seed().run}`);
+    await page.getByRole('button', { name: 'Enregistrer' }).click();
+    await expect(page.getByRole('table', { name: 'Paiements non rapprochés' })).toContainText(`VIR-${seed().run}`);
+  });
+
+  test('cahier de tests type et supervision', async ({ page }) => {
+    await consoleLogin(page, USERS.admin.username, '/cahiers-tests');
+    await page.getByLabel('Service').selectOption({ label: seed().gabName });
+    await page.getByRole('button', { name: 'Ajouter un cas' }).click();
+    await page.getByLabel('Intitulé du cas 1').fill('Retrait au GAB');
+    await page.getByRole('button', { name: 'Enregistrer le cahier' }).click();
+    await expect(page.getByRole('status')).toContainText('Cahier enregistré (version');
+    await page.getByRole('navigation', { name: 'Menu de la console' }).getByRole('link', { name: 'Paramètres et supervision' }).click();
+    const db = page.getByRole('row', { name: /Base de données/ });
+    await expect(db).toContainText('Disponible');
+    await expect(page.getByRole('row', { name: /Antivirus/ })).toContainText('Disponible');
+    await expect(page.getByRole('navigation', { name: 'Menu de la console' }).getByText('Bientôt')).toHaveCount(0);
   });
 
   test('agent : notifications de son équipe ; pièces d’une demande visibles dans la file', async ({ page }) => {

@@ -8,6 +8,9 @@ import { FilesModule, StoredFile } from './files/files.module';
 import { Notification, NotificationsModule } from './notifications/notifications.module';
 import { Content, ContentsModule, SurveyResponse } from './contents/contents.module';
 import { UserDirectory, UsersModule, userDirectoryProvider } from './users/users.module';
+import { BillingModule, Payment, Statement } from './billing/billing.module';
+import { AssistantModule } from './assistant/assistant.module';
+import { SupervisionModule } from './supervision/supervision.module';
 import { OperationsClient, OperationsModule, operationsClientProvider } from './operations/operations.module';
 import { KeycloakTokenVerifier, TOKEN_VERIFIER, TokenVerifier } from './auth/token-verifier';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
@@ -33,7 +36,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { UsageModule } from './usage/usage.module';
 import { Holiday, ServiceCommitment, ServiceRequest } from './requests/request.entities';
 import { RequestsModule } from './requests/requests.module';
-import { Onboarding, OnboardingTestCase } from './onboarding/onboarding.entities';
+import { Onboarding, OnboardingTestCase, TestBook } from './onboarding/onboarding.entities';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { Dispute, DisputeEvent, DisputesModule } from './disputes/disputes.module';
 import { PortalModule } from './portal/portal.module';
@@ -52,6 +55,7 @@ export const ENTITIES = [
   ServiceCommitment,
   Onboarding,
   OnboardingTestCase,
+  TestBook,
   Dispute,
   DisputeEvent,
   OutboxMessage,
@@ -60,6 +64,8 @@ export const ENTITIES = [
   Notification,
   Content,
   SurveyResponse,
+  Statement,
+  Payment,
 ];
 
 export interface AppModuleOptions {
@@ -200,6 +206,9 @@ export class AppModule {
         FilesModule,
         ContentsModule,
         UsersModule,
+        BillingModule,
+        AssistantModule,
+        SupervisionModule,
       ],
       controllers: [HealthController, ConsoleMeController],
     };

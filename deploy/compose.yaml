@@ -197,6 +197,12 @@ services:
       KEYCLOAK_ADMIN_URL: http://keycloak:8080
       KEYCLOAK_BACKEND_SECRET: ${KEYCLOAK_BACKEND_SECRET}
       SEAWEED_FILER_URL: http://seaweedfs:8888
+      # Adresses de la passerelle affichées aux développeurs des banques
+      PUBLIC_GATEWAY_URL: ${PUBLIC_GATEWAY_URL:-https://api.smt.tn}
+      PUBLIC_SANDBOX_URL: ${PUBLIC_SANDBOX_URL:-https://sandbox-api.smt.tn}
+      # Assistant (option) : serveur de modèle open source sur site, API « chat completions »
+      ASSISTANT_URL: ${ASSISTANT_URL:-}
+      ASSISTANT_MODEL: ${ASSISTANT_MODEL:-}
       CLAMAV_HOST: clamav
       CLAMAV_PORT: 3310
       KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/smt/protocol/openid-connect/certs

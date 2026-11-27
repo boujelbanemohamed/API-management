@@ -1,8 +1,9 @@
-import { Body, Controller, Get, HttpCode, Injectable, Module, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Injectable, Module, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Type } from 'class-transformer';
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
-import { IsBoolean, IsEnum, IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
-import { Onboarding, OnboardingTestCase } from './onboarding.entities';
+import { ArrayMaxSize, IsArray, IsBoolean, IsEnum, IsIn, IsOptional, IsString, IsUUID, MaxLength, ValidateNested } from 'class-validator';
+import { Onboarding, OnboardingTestCase, TestBook } from './onboarding.entities';
 import { OnboardingStep, TestCaseStatus, TestMode, assertCanAdvance, assertCanSign } from './onboarding-rules';
 import { BusinessRuleError } from '../subscriptions/subscription-rules';
 import { Environment, SubscriptionStatus } from '../subscriptions/subscription.entity';
@@ -57,6 +58,7 @@ export class OnboardingService {
   constructor(
     @InjectRepository(Onboarding) private readonly repo: Repository<Onboarding>,
     @InjectRepository(OnboardingTestCase) private readonly cases: Repository<OnboardingTestCase>,
+    @InjectRepository(TestBook) private readonly books: Repository<TestBook>,
     private readonly subscriptions: SubscriptionsService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
@@ -140,6 +142,11 @@ export class OnboardingService {
     const target = assertCanAdvance(o, await this.cases.find({ where: { onboardingId: id } }));
     if (target === OnboardingStep.SANDBOX) {
       await this.openSubscription(o, Environment.SANDBOX, actor);
+      // Cahier de tests type du service recopié s'il n'y a pas encore de cas.
+      const book = await this.books.findOne({ where: { apiId: o.apiId } });
+      if (book && (await this.cases.count({ where: { onboardingId: o.id } })) === 0) {
+        await this.cases.save(book.cases.map((c) => this.cases.create({ onboardingId: o.id, ...c })));
+      }
     }
     if (target === OnboardingStep.PRODUCTION) {
       o.productionSubscriptionId = await this.openSubscription(o, Environment.PRODUCTION, actor);
@@ -149,6 +156,23 @@ export class OnboardingService {
     const saved = await this.save(o, actor, 'advance', { from, to: target });
     await this.notifications.toBank(o.partnerId, 'Mise en service', `Votre mise en service passe à l’étape : ${STEP_LABEL[target]}.`, `/mises-en-service/${o.id}`);
     return saved;
+  }
+
+  getBook(apiId: string) {
+    return this.books.findOne({ where: { apiId } }).then((b) => b ?? { apiId, cases: [], version: 0 });
+  }
+
+  listBooks() {
+    return this.books.find();
+  }
+
+  async setBook(apiId: string, cases: { code: string; title: string; mandatory: boolean }[], actor: string) {
+    const codes = cases.map((c) => c.code);
+    if (new Set(codes).size !== codes.length) throw new BusinessRuleError('DUPLICATE_CASE', 'Deux cas ont le même code.');
+    const prev = await this.books.findOne({ where: { apiId } });
+    const book = await this.books.save(this.books.create({ apiId, cases, version: (prev?.version ?? 0) + 1, updatedBy: actor }));
+    await this.audit.record({ actor, action: 'testbook.update', objectType: 'api', objectId: apiId, details: { cases: cases.length, version: book.version } });
+    return book;
   }
 
   async cancel(id: string, actor: string) {
@@ -247,10 +271,35 @@ export class OnboardingController {
   }
 }
 
+export class BookCaseDto {
+  @IsString() @MaxLength(30) code: string;
+  @IsString() @MaxLength(200) title: string;
+  @IsBoolean() mandatory: boolean;
+}
+export class BookDto {
+  @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => BookCaseDto) cases: BookCaseDto[];
+}
+
+@Controller('test-books')
+@UseGuards(ConsoleGuard)
+@Section('catalogue')
+export class TestBooksController {
+  constructor(private readonly service: OnboardingService) {}
+  @Get() list() {
+    return this.service.listBooks();
+  }
+  @Get(':apiId') get(@Param('apiId') apiId: string) {
+    return this.service.getBook(apiId);
+  }
+  @Put(':apiId') set(@Param('apiId') apiId: string, @Body() dto: BookDto, @Actor() actor: string) {
+    return this.service.setBook(apiId, dto.cases, actor);
+  }
+}
+
 @Module({
-  imports: [TypeOrmModule.forFeature([Onboarding, OnboardingTestCase]), SubscriptionsModule, AuditModule],
+  imports: [TypeOrmModule.forFeature([Onboarding, OnboardingTestCase, TestBook]), SubscriptionsModule, AuditModule],
   providers: [OnboardingService],
-  controllers: [OnboardingController],
+  controllers: [OnboardingController, TestBooksController],
   exports: [OnboardingService],
 })
 export class OnboardingModule {}

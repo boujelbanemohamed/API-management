@@ -83,6 +83,15 @@ cd connectors && npm ci && npm test     # codec ISO 8583, signature des webhooks
 - **Contenus** (console, section Administration) : communiqués (les importants s'affichent sur l'accueil), événements, enquêtes (une réponse par utilisateur, résultats agrégés) et bibliothèque versionnée. Chaque contenu est ciblé sur toutes les banques ou une sélection.
 - **Gestion des accès** : l'administrateur sécurité d'une banque gère ses utilisateurs (rôles `banque-*` seulement) ; l'administrateur SMT gère ceux de la console. Le mot de passe temporaire n'est affiché qu'une fois ; le changement de mot de passe et la double authentification sont imposés à la première connexion. On ne peut ni retirer son propre rôle d'administrateur, ni désactiver son propre compte. Le back-end passe par le compte de service Keycloak `backend-admin` (`manage-users`, `view-users`, `query-users`) ; son secret, `KEYCLOAK_BACKEND_SECRET`, est injecté dans le royaume à l'import.
 
+## Facturation, identifiants, cahiers de tests, assistant, supervision (lot 5b)
+
+- **Facturation globale** : chaque plan porte un tarif (abonnement mensuel et prix par appel facturable, en millimes). Les relevés d'un mois terminé sont émis depuis la console (Finance) et regroupent trois éléments : abonnements de production actifs dans le mois (sans prorata), appels facturables × prix, frais d'arbitrage des litiges perdus. L'émission est idempotente (un relevé par banque et par mois) et l'échéance est à 30 jours. La banque est notifiée et consulte ses relevés dans Consommation et facturation.
+- **Rapprochement** : chaque paiement est enregistré avec sa référence de virement, sans doublon. Il est affecté à un relevé, ou laissé à rapprocher puis affecté. Le relevé est émis, partiel ou payé ; la vue de rapprochement montre aussi les retards et les trop-perçus.
+- **Identifiants et sandbox** (portail, Développeurs) : la clé d'API est générée ou renouvelée par le développeur ou l'administrateur sécurité, et affichée une seule fois. Seule son empreinte est conservée. Les accès sont présentés par environnement, avec l'adresse de chaque passerelle (`PUBLIC_GATEWAY_URL`, `PUBLIC_SANDBOX_URL`).
+- **Cahiers de tests** (console, Catalogue) : les cas types d'un service (obligatoires ou non, versionnés) sont recopiés automatiquement à l'entrée en sandbox de chaque mise en service.
+- **Assistant** (option) : il répond à partir de la bibliothèque, des contenus et du catalogue visibles de la banque, en citant ses sources. Les numéros de carte sont retirés avant tout traitement, et l'assistant ne reçoit jamais de données de transaction ; il est limité à 20 questions par heure et par utilisateur. Avec `ASSISTANT_URL`, il interroge un modèle open source hébergé sur site (API « chat completions ») ; sans modèle, ou si le modèle est indisponible, il renvoie les extraits.
+- **Paramètres et supervision** (console, Administration) : état de la base, de Valkey, d'APISIX, de ClamAV, de SeaweedFS, de l'annuaire Keycloak et des fournisseurs ; messages en attente ou en échec ; réglages en vigueur.
+
 ## Front-end (lot 3)
 
 `frontend/` contient deux applications React (Vite, TypeScript) et une bibliothèque commune :
@@ -91,7 +100,7 @@ cd connectors && npm ci && npm test     # codec ISO 8583, signature des webhooks
 - `portail/` : accueil, demandes, litiges, mises en service, catalogue, consommation et abonnements ;
 - `console/` : tableau de bord, file des demandes (double validation), litiges et arbitrage, mises en service, partenaires, abonnements, catalogue, plans, fournisseurs, facturation, engagements et jours fériés, journal d'audit.
 
-Le menu reprend la structure validée. Les écrans prévus dans un lot ultérieur (opérations, bibliothèque, assistant IA…) sont affichés avec la mention « Bientôt ». Le navigateur appelle `/api`, relayé vers le back-end : même origine, pas de CORS. L'adresse de Keycloak est lue au démarrage dans `/config.json` ; une même image sert tous les environnements.
+Le menu reprend la structure validée ; tous ses écrans sont actifs. Le navigateur appelle `/api`, relayé vers le back-end : même origine, pas de CORS. L'adresse de Keycloak est lue au démarrage dans `/config.json` ; une même image sert tous les environnements.
 
 ```bash
 cd frontend && npm ci

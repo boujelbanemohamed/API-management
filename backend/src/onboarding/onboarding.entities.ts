@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { OnboardingStep, TestCaseStatus, TestMode } from './onboarding-rules';
 
 @Entity('onboardings')
@@ -74,4 +74,23 @@ export class OnboardingTestCase {
   /** Référence de la preuve : identifiant de trace d'appel ou pièce stockée. */
   @Column({ type: 'varchar', length: 300, nullable: true })
   evidence: string | null;
+}
+
+/** Cahier de tests type d'un service : recopié dans chaque nouvelle mise en service (F-MES-09). */
+@Entity('test_books')
+export class TestBook {
+  @PrimaryColumn({ type: 'varchar', length: 36 })
+  apiId: string;
+
+  @Column({ type: 'simple-json' })
+  cases: { code: string; title: string; mandatory: boolean }[];
+
+  @Column({ type: 'int', default: 1 })
+  version: number;
+
+  @Column({ type: 'varchar', length: 120 })
+  updatedBy: string;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

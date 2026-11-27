@@ -13,6 +13,16 @@ import { diff, findOr404 } from '../common/crud';
 import { BusinessRuleError } from '../subscriptions/subscription-rules';
 
 export class CreatePlanDto {
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  monthlyFee?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  pricePerCall?: number;
+
   @IsString()
   @Length(2, 80)
   name: string;
@@ -41,6 +51,16 @@ export class CreatePlanDto {
 }
 
 export class UpdatePlanDto {
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  monthlyFee?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  pricePerCall?: number;
+
   @IsOptional()
   @IsInt()
   @Min(1)
